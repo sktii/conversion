@@ -26,23 +26,35 @@ def ensure_dir(d):
         os.makedirs(d)
 
 def ensure_binary_stl(filepath):
+    """
+    Checks if the STL is binary and converts if necessary.
+    Also attempts mesh simplification if faces > limit.
+    Returns: (is_valid_for_mujoco, simplified_filepath_if_different)
+    """
     try:
         needs_save = False
         reason = ""
 
+        # 1. Check Header (ASCII vs Binary)
         with open(filepath, 'rb') as f:
             header = f.read(5)
         if header.startswith(b'solid'):
             needs_save = True
             reason = "ASCII format detected"
 
+        # 2. Check Face Count (Load mesh)
         mesh = trimesh.load(filepath)
+        face_count = len(mesh.faces)
 
-        if len(mesh.faces) > MUJOCO_FACE_LIMIT:
-            print(f"⚠️  High face count ({len(mesh.faces)}). Attempting simplification...")
+        hull_path = None
+
+        if face_count > MUJOCO_FACE_LIMIT:
+            print(f"⚠️  High face count ({face_count}). Attempting simplification...")
+            simplification_success = False
             try:
                 if hasattr(mesh, 'simplify_quadric_decimation'):
                     mesh = mesh.simplify_quadric_decimation(MUJOCO_FACE_LIMIT)
+                    simplification_success = True
                     needs_save = True
                     reason += f" & Simplified ({len(mesh.faces)} faces)"
                 else:
@@ -50,22 +62,48 @@ def ensure_binary_stl(filepath):
             except Exception as e:
                 print(f"   (Simplification failed: {e}, skipping)")
 
+            # If still too big, generate Convex Hull as fallback for visual
+            if len(mesh.faces) > MUJOCO_FACE_LIMIT:
+                print(f"⚠️  Mesh still too large for MuJoCo ({len(mesh.faces)} > {MUJOCO_FACE_LIMIT}).")
+                print("   -> Generating Convex Hull for visualization to prevent crash.")
+                hull = mesh.convex_hull
+                base, ext = os.path.splitext(filepath)
+                hull_path = f"{base}_hull{ext}"
+                hull.export(hull_path)
+                print(f"✅ Generated Hull: {hull_path}")
+                # We return the hull path so raw_mesh.xml uses it
+                # But we DON'T overwrite the original with the hull (keep geometry for fitting)
+
+                # However, we still need to ensure the original is binary if it was ASCII
+                if needs_save:
+                    print(f"ℹ️  Converting original to Binary (still high poly)...")
+                    mesh.export(filepath, file_type='stl')
+
+                return False, hull_path
+
         if needs_save:
             print(f"ℹ️  Optimizing STL ({reason})...")
             mesh.export(filepath, file_type='stl')
             print(f"✅ Saved optimized Binary STL: {filepath}")
         else:
-            print(f"✅ STL is valid (Binary, {len(mesh.faces)} faces).")
+            print(f"✅ STL is valid (Binary, {face_count} faces).")
+
+        return True, None
 
     except Exception as e:
         print(f"⚠️  Error verifying/converting STL format: {e}")
+        return False, None
 
-def generate_raw_xml(stl_path, scale_factor=1.0):
+def generate_raw_xml(stl_path, scale_factor=1.0, override_stl_path=None):
     ensure_dir(XML_DIR)
-    stl_filename = os.path.basename(stl_path)
+
+    # Use override path (e.g. hull) if provided
+    target_path = override_stl_path if override_stl_path else stl_path
+
+    stl_filename = os.path.basename(target_path)
     scale_str = f"{scale_factor} {scale_factor} {scale_factor}"
 
-    # Path relative to project root, NO "../"
+    # Path relative to project root
     relative_stl_path = f"STL/{stl_filename}"
 
     xml_content = f"""<mujoco model="raw_mesh_view">
@@ -109,14 +147,13 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
     ensure_dir(XML_DIR)
 
     print(f"🚀 Starting Pillar Generation")
-    print(f"📂 Input STL: {stl_path}")
 
     if not os.path.exists(stl_path):
         print(f"❌ Error: STL file not found: {stl_path}")
         return
 
     try:
-        ensure_binary_stl(stl_path)
+        # Load Mesh
         mesh = trimesh.load(stl_path)
 
         if scale_factor != 1.0:
@@ -190,19 +227,11 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
 
         print(f"✅ Merged into {len(final_pillars)} distinct pillars.")
 
-        # 6. Patch UR5e XML
+        # Patch UR5e XML
         try:
             tree = ET.parse("ur5e.xml")
             root = tree.getroot()
 
-            # --- PATCH ASSET PATHS ---
-            # DO NOT prepend "../" as per user request.
-            # We assume paths in ur5e.xml are relative to project root (e.g. "universal_robots_ur5e/...")
-            # and that the user will load the XML from the project root or configure MuJoCo appropriately.
-
-            # (No path modification loop here)
-
-            # Update Robot Position
             found = False
             for body in root.iter('body'):
                 if body.get('name') == "robot0:ur5e:base":
@@ -213,7 +242,6 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
 
             if not found:
                 print("⚠️  Warning: Could not find body 'robot0:ur5e:base' in ur5e.xml")
-
             tree.write(PATCHED_UR5E_FILE)
             print(f"✅ Created patched UR5e XML: {os.path.abspath(PATCHED_UR5E_FILE)}")
         except Exception as e:
@@ -224,7 +252,7 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
                  else:
                      print("❌ Critical: ur5e.xml not found for fallback.")
 
-        # 7. Generate XML Strings
+        # Generate XML Strings
         pillar_geoms = []
         def make_geom(name, type_str, size, pos, rgba):
             return f'    <geom name="{name}" type="{type_str}" size="{size}" pos="{pos}" rgba="{rgba}" contype="1" conaffinity="1"/>'
@@ -259,10 +287,8 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
             else:
                 pillar_geoms.append(make_geom(f"pillar_cyl_{i}", "cylinder", unused_size_cyl, unused_pos, unused_rgba))
 
-        # 8. Construct Final XML
         ur5e_ref = os.path.basename(PATCHED_UR5E_FILE)
 
-        # REMOVED meshdir completely
         xml_content = f"""<mujoco model="approximated_pillars">
   <compiler angle="radian"/>
 
@@ -318,8 +344,13 @@ def main():
         print("Usage: python stl_to_mujoco.py [stl_path]")
         return
 
+    # Check and Optimize STL first
+    is_valid, hull_path = ensure_binary_stl(stl_path)
+
+    # Check Scale
     scale_factor = 1.0
     try:
+        # Load mesh (reload safe because ensured binary)
         mesh = trimesh.load(stl_path)
         bounds = mesh.bounds
         max_dim = np.max(bounds[1] - bounds[0])
@@ -329,7 +360,10 @@ def main():
     except Exception as e:
         print(f"⚠️  Could not check scale: {e}")
 
-    generate_raw_xml(stl_path, scale_factor)
+    # Pass hull_path (if generated) to raw_xml to avoid high-poly crash
+    generate_raw_xml(stl_path, scale_factor, override_stl_path=hull_path)
+
+    # Fitted XML always uses original (or simplified) geometry for calculation
     generate_fitted_xml(stl_path, scale_factor)
 
 if __name__ == "__main__":
