@@ -4,6 +4,7 @@ from sklearn.cluster import KMeans
 import os
 import sys
 import shutil
+import glob
 import xml.etree.ElementTree as ET
 
 # Parameters
@@ -32,7 +33,6 @@ def generate_raw_xml(stl_path, scale_factor=1.0):
     stl_filename = os.path.basename(stl_path)
     scale_str = f"{scale_factor} {scale_factor} {scale_factor}"
 
-    # Absolute path to STL directory ensures MuJoCo finds it regardless of CWD
     abs_stl_path = os.path.abspath(stl_path)
     stl_dir = os.path.dirname(abs_stl_path)
 
@@ -64,22 +64,14 @@ def generate_raw_xml(stl_path, scale_factor=1.0):
 
 
 def find_disk_center(mesh):
-    """
-    Finds the center of the disk-like feature on the mesh.
-    Returns (x, y, z) in mesh coordinates.
-    """
-    # Heuristic: Find a flat circular feature on top.
     points, _ = trimesh.sample.sample_surface(mesh, 2000)
     z_coords = points[:, 2]
-
-    # Just take the top 10% of points by Z
     top_percentile_z = np.percentile(z_coords, 90)
     top_points = points[z_coords > top_percentile_z]
 
     if len(top_points) == 0:
-        return np.mean(points, axis=0) # Fallback to centroid
+        return np.mean(points, axis=0)
 
-    # Centroid of top points
     center = np.mean(top_points, axis=0)
     return center
 
@@ -153,14 +145,12 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
                 o_min = other['min']
                 o_max = other['max']
 
-                # Check Overlap (with tolerance)
                 tol = 0.05
                 overlap_x = (c_min[0] - tol <= o_max[0]) and (c_max[0] + tol >= o_min[0])
                 overlap_y = (c_min[1] - tol <= o_max[1]) and (c_max[1] + tol >= o_min[1])
                 overlap_z = (c_min[2] - tol <= o_max[2]) and (c_max[2] + tol >= o_min[2])
 
                 if overlap_x and overlap_y and overlap_z:
-                    # Merge!
                     current['min'] = np.minimum(current['min'], other['min'])
                     current['max'] = np.maximum(current['max'], other['max'])
                     current['count'] += other['count']
@@ -221,7 +211,6 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         unused_rgba = "0.5 0.5 0.5 0"
         used_rgba = "0.5 0.5 0.5 1"
 
-        # Fill 16 Boxes
         for i in range(1, NUM_BOXES + 1):
             if final_pillars:
                 p = final_pillars.pop(0)
@@ -233,7 +222,6 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
             else:
                 pillar_geoms.append(make_geom(f"pillar_box_{i}", "box", unused_size, unused_pos, unused_rgba))
 
-        # Fill 16 Cylinders
         for i in range(1, NUM_CYLINDERS + 1):
             if final_pillars:
                 p = final_pillars.pop(0)
@@ -249,10 +237,6 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
 
         # 8. Construct Final XML
         ur5e_ref = os.path.basename(PATCHED_UR5E_FILE)
-
-        # We need to point meshdir to the PARENT directory of XML/ (i.e., the root)
-        # so that it can find universal_robots_ur5e/ and robotiq_2f85/
-        # which are typically at the repo root.
 
         xml_content = f"""<mujoco model="approximated_pillars">
   <compiler angle="radian" meshdir="../"/>
@@ -289,11 +273,31 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         traceback.print_exc()
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python stl_to_mujoco.py <stl_path>")
-        return
+    stl_path = None
 
-    stl_path = sys.argv[1]
+    # Arg parsing logic
+    if len(sys.argv) > 1:
+        stl_path = sys.argv[1]
+    else:
+        # Auto-scan STL directory
+        stl_dir = "STL"
+        if os.path.exists(stl_dir):
+            files = glob.glob(os.path.join(stl_dir, "*.stl"))
+            if files:
+                # Sort by modification time, newest first
+                files.sort(key=os.path.getmtime, reverse=True)
+                stl_path = files[0]
+                print(f"ℹ️  No input file provided. Using newest STL found: {stl_path}")
+            else:
+                print(f"❌ No STL files found in {stl_dir}")
+                return
+        else:
+            print(f"❌ STL directory not found: {stl_dir}")
+            return
+
+    if not stl_path:
+        print("Usage: python stl_to_mujoco.py [stl_path]")
+        return
 
     # Check Scale
     scale_factor = 1.0

@@ -25,6 +25,30 @@ OUTPUT_FOLDER = os.path.join(BASE_DIR, "STL")
 TOLERANCE = 0.05
 ANGULAR_TOLERANCE = 0.1
 
+def ensure_binary_stl(filepath):
+    """
+    Checks if the STL is binary. If not, converts it using Trimesh.
+    Binary STL starts with 80 bytes header.
+    ASCII STL starts with 'solid'.
+    """
+    try:
+        with open(filepath, 'rb') as f:
+            header = f.read(5)
+
+        # Check for ASCII marker
+        if header.startswith(b'solid'):
+            print(f"ℹ️  Detected ASCII STL: {filepath}. Converting to Binary...")
+            mesh = trimesh.load(filepath)
+            # Export as binary STL
+            mesh.export(filepath, file_type='stl') # Defaults to binary
+            print(f"✅ Converted to Binary STL.")
+        else:
+            # Assume binary (or valid enough header)
+            pass
+
+    except Exception as e:
+        print(f"⚠️  Error verifying/converting STL format: {e}")
+
 def convert_step_to_stl(input_filename=None):
     """
     Converts a STEP file to STL with fallback logic for complex models.
@@ -88,6 +112,9 @@ def convert_step_to_stl(input_filename=None):
                 tolerance=TOLERANCE,
                 angularTolerance=ANGULAR_TOLERANCE
             )
+            # Verify Binary
+            ensure_binary_stl(output_path)
+
         except Exception as e:
             print(f"⚠️  Direct export raised exception: {e}")
 
@@ -146,6 +173,7 @@ def convert_step_to_stl(input_filename=None):
             combined_mesh = trimesh.util.concatenate(meshes)
 
             print(f"⏳ Saving combined mesh to {output_path}...")
+            # Trimesh exports binary by default
             combined_mesh.export(output_path)
 
         finally:
