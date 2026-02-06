@@ -27,33 +27,39 @@ def ensure_dir(d):
 
 def ensure_binary_stl(filepath):
     """
-    Checks if the STL is binary and has valid face count.
-    - If ASCII (starts with 'solid'), converts to Binary.
-    - If face count > 20000, simplifies the mesh.
+    Checks if the STL is binary and converts if necessary.
+    Also attempts mesh simplification if faces > limit, but gracefully fails if libraries missing.
     """
     try:
         needs_save = False
         reason = ""
 
         # 1. Check Header (ASCII vs Binary)
-        is_ascii = False
         with open(filepath, 'rb') as f:
             header = f.read(5)
         if header.startswith(b'solid'):
-            is_ascii = True
             needs_save = True
             reason = "ASCII format detected"
 
         # 2. Check Face Count (Load mesh)
+        # Only load if we suspect we need to check, or if we are already saving.
+        # But to check face count we must load.
         mesh = trimesh.load(filepath)
 
         if len(mesh.faces) > MUJOCO_FACE_LIMIT:
-            print(f"⚠️  High face count ({len(mesh.faces)}). Simplifying...")
-            # Decimate
-            # Target 15000 faces to be safe
-            mesh = mesh.simplify_quadratic_decimation(MUJOCO_FACE_LIMIT)
-            needs_save = True
-            reason += f" & High Face Count ({len(mesh.faces)})"
+            print(f"⚠️  High face count ({len(mesh.faces)}). Attempting simplification...")
+            # Try simplification methods safely
+            try:
+                # Try Open3D / Quadric Decimation if available
+                # Note: Trimesh method names vary by version/backend.
+                if hasattr(mesh, 'simplify_quadric_decimation'):
+                    mesh = mesh.simplify_quadric_decimation(MUJOCO_FACE_LIMIT)
+                    needs_save = True
+                    reason += f" & Simplified ({len(mesh.faces)} faces)"
+                else:
+                    print("   (Simplification method not available, skipping decimation)")
+            except Exception as e:
+                print(f"   (Simplification failed: {e}, skipping)")
 
         if needs_save:
             print(f"ℹ️  Optimizing STL ({reason})...")
@@ -325,7 +331,6 @@ def main():
     # Check Scale
     scale_factor = 1.0
     try:
-        # Pre-load just to check scale, but we will load again later.
         mesh = trimesh.load(stl_path)
         bounds = mesh.bounds
         max_dim = np.max(bounds[1] - bounds[0])
