@@ -24,15 +24,32 @@ def ensure_dir(d):
     if not os.path.exists(d):
         os.makedirs(d)
 
-def generate_raw_xml(stl_path, scale_factor=1.0):
+def ensure_binary_stl(filepath):
     """
-    Generates a raw XML wrapper for the STL mesh.
+    Checks if the STL is binary. If not, converts it using Trimesh.
+    Binary STL starts with 80 bytes header.
+    ASCII STL starts with 'solid'.
     """
-    ensure_dir(XML_DIR)
+    try:
+        with open(filepath, 'rb') as f:
+            header = f.read(5)
 
+        if header.startswith(b'solid'):
+            print(f"ℹ️  Detected ASCII STL in input: {filepath}. Converting to Binary...")
+            mesh = trimesh.load(filepath)
+            mesh.export(filepath, file_type='stl')
+            print(f"✅ Converted input to Binary STL.")
+    except Exception as e:
+        print(f"⚠️  Error verifying/converting STL format: {e}")
+
+def generate_raw_xml(stl_path, scale_factor=1.0):
+    ensure_dir(XML_DIR)
     stl_filename = os.path.basename(stl_path)
     scale_str = f"{scale_factor} {scale_factor} {scale_factor}"
 
+    # Absolute path to STL directory ensures MuJoCo finds it regardless of CWD
+    # But using meshdir="../STL" might be cleaner if we stick to relative structure.
+    # Let's use absolute path for robustness as requested before.
     abs_stl_path = os.path.abspath(stl_path)
     stl_dir = os.path.dirname(abs_stl_path)
 
@@ -53,7 +70,6 @@ def generate_raw_xml(stl_path, scale_factor=1.0):
     <light pos="0 0 3" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
 
-    <!-- The Raw Mesh -->
     <geom name="imported_part" type="mesh" mesh="target_mesh" rgba="0.8 0.8 0.8 1"/>
   </worldbody>
 </mujoco>
@@ -68,10 +84,8 @@ def find_disk_center(mesh):
     z_coords = points[:, 2]
     top_percentile_z = np.percentile(z_coords, 90)
     top_points = points[z_coords > top_percentile_z]
-
     if len(top_points) == 0:
         return np.mean(points, axis=0)
-
     center = np.mean(top_points, axis=0)
     return center
 
@@ -87,6 +101,9 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         return
 
     try:
+        # Check and Fix STL Format (ASCII vs Binary)
+        ensure_binary_stl(stl_path)
+
         # 1. Load Mesh
         mesh = trimesh.load(stl_path)
 
@@ -131,14 +148,11 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
 
         # Iterative Merge
         final_pillars = []
-
         while clusters:
             clusters.sort(key=lambda x: x['count'], reverse=True)
             current = clusters.pop(0)
-
             c_min = current['min']
             c_max = current['max']
-
             i = 0
             while i < len(clusters):
                 other = clusters[i]
@@ -166,7 +180,6 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
                 'center': center,
                 'dims': dims
             })
-
             if len(final_pillars) >= TOTAL_CLUSTERS:
                 break
 
@@ -176,7 +189,6 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         try:
             tree = ET.parse("ur5e.xml")
             root = tree.getroot()
-
             found = False
             for body in root.iter('body'):
                 if body.get('name') == "robot0:ur5e:base":
@@ -187,10 +199,8 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
 
             if not found:
                 print("⚠️  Warning: Could not find body 'robot0:ur5e:base' in ur5e.xml")
-
             tree.write(PATCHED_UR5E_FILE)
             print(f"✅ Created patched UR5e XML: {os.path.abspath(PATCHED_UR5E_FILE)}")
-
         except Exception as e:
             print(f"⚠️  Failed to patch ur5e.xml: {e}.")
             if not os.path.exists(PATCHED_UR5E_FILE):
@@ -201,7 +211,6 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
 
         # 7. Generate XML Strings
         pillar_geoms = []
-
         def make_geom(name, type_str, size, pos, rgba):
             return f'    <geom name="{name}" type="{type_str}" size="{size}" pos="{pos}" rgba="{rgba}" contype="1" conaffinity="1"/>'
 
@@ -238,6 +247,7 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         # 8. Construct Final XML
         ur5e_ref = os.path.basename(PATCHED_UR5E_FILE)
 
+        # meshdir="../" allows MuJoCo to find assets in the project root
         xml_content = f"""<mujoco model="approximated_pillars">
   <compiler angle="radian" meshdir="../"/>
 
@@ -261,10 +271,8 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
   </worldbody>
 </mujoco>
 """
-
         with open(FITTED_XML_FILE, "w") as f:
             f.write(xml_content)
-
         print(f"✅ XML Generated Successfully: {os.path.abspath(FITTED_XML_FILE)}")
 
     except Exception as e:
@@ -274,17 +282,13 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
 
 def main():
     stl_path = None
-
-    # Arg parsing logic
     if len(sys.argv) > 1:
         stl_path = sys.argv[1]
     else:
-        # Auto-scan STL directory
         stl_dir = "STL"
         if os.path.exists(stl_dir):
             files = glob.glob(os.path.join(stl_dir, "*.stl"))
             if files:
-                # Sort by modification time, newest first
                 files.sort(key=os.path.getmtime, reverse=True)
                 stl_path = files[0]
                 print(f"ℹ️  No input file provided. Using newest STL found: {stl_path}")
@@ -302,6 +306,8 @@ def main():
     # Check Scale
     scale_factor = 1.0
     try:
+        # Pre-load just to check scale, but we will load again later.
+        # Efficient? Maybe not, but robust.
         mesh = trimesh.load(stl_path)
         bounds = mesh.bounds
         max_dim = np.max(bounds[1] - bounds[0])
