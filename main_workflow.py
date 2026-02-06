@@ -1,35 +1,39 @@
 import os
 import sys
 import subprocess
+import glob
 
 # Define script names
 SCRIPT_STEP_TO_STL = "step_to_stl.py"
 SCRIPT_STL_TO_PILLARS = "stl_to_pillar_xml.py"
+SCRIPT_FIND_CENTER = "find_disk_center.py"
 
 def run_step(command):
     print(f"\n🔹 Running: {command}")
     try:
-        # Run and capture output to show it in real-time
+        # Run and capture output
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        # Read output
+        last_line = ""
         while True:
             output = process.stdout.readline()
             if output == '' and process.poll() is not None:
                 break
             if output:
                 print(output.strip())
+                last_line = output.strip()
 
         rc = process.poll()
         if rc != 0:
             err = process.stderr.read()
             print(f"❌ Command failed with return code {rc}")
             print(f"Error output:\n{err}")
-            return False
-        return True
+            return False, None
+
+        return True, last_line
     except Exception as e:
         print(f"❌ Execution failed: {e}")
-        return False
+        return False, None
 
 def main():
     print("=========================================")
@@ -37,61 +41,61 @@ def main():
     print("=========================================")
 
     # 1. STEP -> STL
-    print("\n[Step 1/2] Converting STEP to STL...")
-    # This script automatically finds the STEP file in STP folder
-    success = run_step(f"python {SCRIPT_STEP_TO_STL}")
+    print("\n[Step 1/3] Converting STEP to STL...")
+    success, _ = run_step(f"python {SCRIPT_STEP_TO_STL}")
     if not success:
         print("❌ Step 1 failed. Aborting.")
         sys.exit(1)
 
-    # Identify the generated STL file
-    # We look into the output of step_to_stl or just check the STL folder
+    # Identify generated STL
     stl_dir = "STL"
     if not os.path.exists(stl_dir):
         print(f"❌ Error: STL directory {stl_dir} not found.")
         sys.exit(1)
 
-    stl_files = [f for f in os.listdir(stl_dir) if f.lower().endswith('.stl') and "test_box" not in f]
-
-    # Filter out test_box if it exists, to find the real file.
-    # If the user has multiple files, we might pick the wrong one.
-    # Let's try to be smarter or just ask the user?
-    # For now, pick the largest one or just the first non-test one.
-
-    target_stl = None
-    if stl_files:
-        target_stl = os.path.join(stl_dir, stl_files[0])
-
-    if not target_stl:
-        # Maybe the user only has the test file or the file generation failed silently?
-        # But step_to_stl checks for file existence.
-        # Let's check if the user provided an argument to step_to_stl?
-        # The main_workflow calls it without args, so it processes the first STEP found.
-        pass
-
-    # If we can't determine the file easily from here without parsing stdout,
-    # let's just assume the user wants to process the *latest* generated STL.
-    # Or simply:
-    stl_files_all = [os.path.join(stl_dir, f) for f in os.listdir(stl_dir) if f.lower().endswith('.stl')]
+    stl_files_all = [os.path.join(stl_dir, f) for f in os.listdir(stl_dir) if f.lower().endswith('.stl') and "part_" not in f]
     if not stl_files_all:
-        print("❌ No STL files found to process.")
+        print("❌ No STL files found.")
         sys.exit(1)
 
-    # Pick the most recently modified file
     target_stl = max(stl_files_all, key=os.path.getmtime)
+    print(f"✅ STL File ready: {target_stl}")
 
-    print(f"\n✅ STL File ready: {target_stl}")
+    # 2. Find Disk Center
+    print("\n[Step 2/3] Detecting Disk Center for Robot Placement...")
+    # Capture output from find_disk_center.py which prints "CENTER_RESULT:x,y,z"
+    # We need to run it and parse stdout.
 
-    # 2. STL -> XML
-    print("\n[Step 2/2] Generating Pillars XML...")
+    # We use subprocess.check_output to capture all output easily
+    try:
+        output = subprocess.check_output(f"python {SCRIPT_FIND_CENTER} {target_stl}", shell=True, text=True)
+        print(output)
+
+        robot_pos = "0 0 0"
+        for line in output.splitlines():
+            if "CENTER_RESULT:" in line:
+                coords = line.split(":")[1].strip().split(",")
+                robot_pos = f"{coords[0]} {coords[1]} {coords[2]}"
+                break
+
+        print(f"📍 Detected Robot Position: {robot_pos}")
+
+    except subprocess.CalledProcessError as e:
+        print(f"⚠️  Center detection failed ({e}). Defaulting to 0 0 0.")
+        robot_pos = "0 0 0"
+
+    # 3. STL -> XML
+    print("\n[Step 3/3] Generating Pillars XML...")
     output_xml = "fitted_pillars.xml"
-    success = run_step(f"python {SCRIPT_STL_TO_PILLARS} {target_stl} {output_xml}")
+
+    # Pass robot_pos to the script
+    success, _ = run_step(f"python {SCRIPT_STL_TO_PILLARS} {target_stl} {output_xml} {robot_pos}")
 
     if success:
         print("\n🎉 WORKFLOW COMPLETE!")
         print(f"👉 Final XML saved to: {os.path.abspath(output_xml)}")
     else:
-        print("❌ Step 2 failed.")
+        print("❌ Step 3 failed.")
 
 if __name__ == "__main__":
     main()
