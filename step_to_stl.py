@@ -1,13 +1,17 @@
 import os
 import sys
+import glob
+import time
 
-# Try importing cadquery. If it fails, we can't do the conversion.
+# Try importing necessary libraries
 try:
     import cadquery as cq
-except ImportError:
-    print("❌ Critical Error: 'cadquery' library not found.")
-    print("   Please install it using: conda install -c cadquery -c conda-forge cadquery=master")
-    print("   or check your python environment.")
+    import trimesh
+    import numpy as np
+except ImportError as e:
+    print(f"❌ Critical Error: Missing dependency: {e}")
+    print("   Please install: conda install -c cadquery -c conda-forge cadquery=master")
+    print("   and: pip install trimesh numpy")
     sys.exit(1)
 
 # Default paths
@@ -16,27 +20,25 @@ INPUT_FOLDER = os.path.join(BASE_DIR, "STP")
 OUTPUT_FOLDER = os.path.join(BASE_DIR, "STL")
 
 # Parameters
-TOLERANCE = 0.05  # Lower is finer but heavier
+TOLERANCE = 0.05
 ANGULAR_TOLERANCE = 0.1
 
 def convert_step_to_stl(input_filename=None):
     """
-    Converts a STEP file to STL.
+    Converts a STEP file to STL with fallback logic for complex models.
     """
     # 1. Setup Input Path
     if input_filename:
         input_path = input_filename
     else:
-        # Auto-detect .step or .stp in STP folder
         if not os.path.exists(INPUT_FOLDER):
              print(f"❌ Input folder not found: {INPUT_FOLDER}")
              return None
-
+        # Find step files
         files = [f for f in os.listdir(INPUT_FOLDER) if f.lower().endswith(('.step', '.stp'))]
         if not files:
             print(f"❌ No STEP files found in {INPUT_FOLDER}")
             return None
-        # Pick the first one for now, or loop? The user implies one main file.
         input_path = os.path.join(INPUT_FOLDER, files[0])
 
     print(f"🚀 Starting Conversion Process")
@@ -49,7 +51,6 @@ def convert_step_to_stl(input_filename=None):
     # 2. Setup Output Path
     if not os.path.exists(OUTPUT_FOLDER):
         os.makedirs(OUTPUT_FOLDER)
-        print(f"📁 Created Output Folder: {OUTPUT_FOLDER}")
 
     file_name = os.path.basename(input_path)
     base_name = os.path.splitext(file_name)[0]
@@ -60,46 +61,128 @@ def convert_step_to_stl(input_filename=None):
     # 3. Import STEP
     try:
         print("⏳ Importing STEP file (this may take a while)...")
+        start_time = time.time()
         model = cq.importers.importStep(input_path)
+        print(f"   Import took {time.time() - start_time:.2f}s")
 
-        # 4. Debugging Content
-        # Check if we actually got solids
+        # Check solids
         solids = model.solids().vals()
         print(f"ℹ️  Found {len(solids)} solid(s) in the model.")
 
         if len(solids) == 0:
-             print("⚠️  Warning: No solids found in STEP file! Attempting to export anyway, but output might be empty.")
+             print("⚠️  Warning: No solids found! Attempting export anyway.")
 
-        # 5. Export STL
-        print("⏳ Exporting to STL...")
-        cq.exporters.export(
-            model,
-            output_path,
-            exportType="STL",
-            tolerance=TOLERANCE,
-            angularTolerance=ANGULAR_TOLERANCE
-        )
+        # --- ATTEMPT 1: Direct Export ---
+        print("⏳ Attempting direct export...")
+        try:
+            cq.exporters.export(
+                model,
+                output_path,
+                exportType="STL",
+                tolerance=TOLERANCE,
+                angularTolerance=ANGULAR_TOLERANCE
+            )
+        except Exception as e:
+            print(f"⚠️  Direct export raised exception: {e}")
+
+        # Check if successful
+        if verify_file(output_path):
+            print("✅ Direct conversion Successful!")
+            return output_path
+
+        # --- ATTEMPT 2: Fallback - Individual Solids ---
+        print("⚠️  Direct export failed (file not created). Switching to Robust Mode (Individual Solids)...")
+        if len(solids) == 0:
+            print("❌ No solids to process in fallback mode.")
+            return None
+
+        meshes = []
+        temp_dir = os.path.join(OUTPUT_FOLDER, "temp_parts")
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+
+        success_count = 0
+
+        for i, solid in enumerate(solids):
+            part_file = os.path.join(temp_dir, f"part_{i}.stl")
+            try:
+                # Wrap solid in Workplane to export
+                # Note: cq.exporters.export expects a shape or workplane
+                # We can try exporting the solid object directly if supported, or wrap it.
+                # 'solid' is a OCP TopoDS_Solid object usually wrapped by CQ logic.
+                # Let's wrap it in a Workplane to be safe and standard.
+                # FIX: Use newObject([solid]) to ensure it's in the stack
+                wp = cq.Workplane("XY").newObject([solid])
+
+                cq.exporters.export(
+                    wp,
+                    part_file,
+                    exportType="STL",
+                    tolerance=TOLERANCE,
+                    angularTolerance=ANGULAR_TOLERANCE
+                )
+
+                if os.path.exists(part_file) and os.path.getsize(part_file) > 0:
+                    # Load back with trimesh
+                    m = trimesh.load(part_file)
+                    meshes.append(m)
+                    success_count += 1
+                    print(f"   ✅ Processed solid {i+1}/{len(solids)}", end="\r")
+                else:
+                    print(f"   ⚠️  Failed to export solid {i+1} (empty file)")
+            except Exception as e:
+                print(f"   ⚠️  Error processing solid {i+1}: {e}")
+
+        print(f"\nℹ️  Successfully processed {success_count}/{len(solids)} parts.")
+
+        if not meshes:
+            print("❌ No parts could be converted.")
+            return None
+
+        # Concatenate
+        print("⏳ Merging meshes...")
+        combined_mesh = trimesh.util.concatenate(meshes)
+
+        print(f"⏳ Saving combined mesh to {output_path}...")
+        combined_mesh.export(output_path)
+
+        # Clean up temp
+        try:
+            for f in glob.glob(os.path.join(temp_dir, "*.stl")):
+                os.remove(f)
+            os.rmdir(temp_dir)
+        except:
+            pass # ignore cleanup errors
 
     except Exception as e:
         print(f"❌ Error during conversion: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
-    # 6. Verification
-    if os.path.exists(output_path):
-        size = os.path.getsize(output_path)
-        print(f"✅ Conversion Successful!")
-        print(f"📄 Output File: {output_path}")
-        print(f"📊 File Size: {size / (1024*1024):.2f} MB")
-        if size < 100:
-            print("⚠️  Warning: File size is extremely small. The export might be empty.")
+    # Final Verification
+    if verify_file(output_path):
+        print("✅ Robust Conversion Successful!")
         return output_path
     else:
-        print("❌ Critical Error: Export function finished but file was not created.")
+        print("❌ Critical Error: All export attempts failed.")
         return None
 
+def verify_file(path):
+    if os.path.exists(path):
+        size = os.path.getsize(path)
+        if size > 100:
+            return True
+        else:
+            print(f"   (File exists but is too small: {size} bytes)")
+    return False
+
 if __name__ == "__main__":
-    # Allow passing file via command line
+    result = None
     if len(sys.argv) > 1:
-        convert_step_to_stl(sys.argv[1])
+        result = convert_step_to_stl(sys.argv[1])
     else:
-        convert_step_to_stl()
+        result = convert_step_to_stl()
+
+    if result is None:
+        sys.exit(1)

@@ -54,8 +54,10 @@ def generate_pillars_xml(stl_path, output_xml="pillars.xml"):
             else:
                 # Calculate bounding box of the cluster relative to center
                 # We want the radius/half-size
-                dists = np.linalg.norm(cluster_points - center, axis=1)
-                radius = np.max(dists)
+                # FIX: Use 2D (XY) distance for radius, as pillars are vertical.
+                # Using 3D distance would make tall pillars artificially wide.
+                dists_xy = np.linalg.norm(cluster_points[:, :2] - center[:2], axis=1)
+                radius = np.max(dists_xy)
 
                 # Z-height approximation: find min/max Z of cluster
                 min_z = np.min(cluster_points[:, 2])
