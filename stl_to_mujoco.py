@@ -13,6 +13,7 @@ NUM_BOXES = 16
 TOTAL_CLUSTERS = NUM_CYLINDERS + NUM_BOXES
 SAMPLE_COUNT = 5000
 SCALE_THRESHOLD = 10.0 # If > 10m, assume millimeters
+MUJOCO_FACE_LIMIT = 20000
 
 # Output Paths (relative to script dir)
 XML_DIR = "XML"
@@ -26,19 +27,41 @@ def ensure_dir(d):
 
 def ensure_binary_stl(filepath):
     """
-    Checks if the STL is binary. If not, converts it using Trimesh.
-    Binary STL starts with 80 bytes header.
-    ASCII STL starts with 'solid'.
+    Checks if the STL is binary and has valid face count.
+    - If ASCII (starts with 'solid'), converts to Binary.
+    - If face count > 20000, simplifies the mesh.
     """
     try:
+        needs_save = False
+        reason = ""
+
+        # 1. Check Header (ASCII vs Binary)
+        is_ascii = False
         with open(filepath, 'rb') as f:
             header = f.read(5)
-
         if header.startswith(b'solid'):
-            print(f"ℹ️  Detected ASCII STL in input: {filepath}. Converting to Binary...")
-            mesh = trimesh.load(filepath)
-            mesh.export(filepath, file_type='stl')
-            print(f"✅ Converted input to Binary STL.")
+            is_ascii = True
+            needs_save = True
+            reason = "ASCII format detected"
+
+        # 2. Check Face Count (Load mesh)
+        mesh = trimesh.load(filepath)
+
+        if len(mesh.faces) > MUJOCO_FACE_LIMIT:
+            print(f"⚠️  High face count ({len(mesh.faces)}). Simplifying...")
+            # Decimate
+            # Target 15000 faces to be safe
+            mesh = mesh.simplify_quadratic_decimation(MUJOCO_FACE_LIMIT)
+            needs_save = True
+            reason += f" & High Face Count ({len(mesh.faces)})"
+
+        if needs_save:
+            print(f"ℹ️  Optimizing STL ({reason})...")
+            mesh.export(filepath, file_type='stl') # Defaults to binary
+            print(f"✅ Saved optimized Binary STL: {filepath}")
+        else:
+            print(f"✅ STL is valid (Binary, {len(mesh.faces)} faces).")
+
     except Exception as e:
         print(f"⚠️  Error verifying/converting STL format: {e}")
 
@@ -47,9 +70,6 @@ def generate_raw_xml(stl_path, scale_factor=1.0):
     stl_filename = os.path.basename(stl_path)
     scale_str = f"{scale_factor} {scale_factor} {scale_factor}"
 
-    # Absolute path to STL directory ensures MuJoCo finds it regardless of CWD
-    # But using meshdir="../STL" might be cleaner if we stick to relative structure.
-    # Let's use absolute path for robustness as requested before.
     abs_stl_path = os.path.abspath(stl_path)
     stl_dir = os.path.dirname(abs_stl_path)
 
@@ -101,7 +121,7 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         return
 
     try:
-        # Check and Fix STL Format (ASCII vs Binary)
+        # Check and Fix STL Format (ASCII vs Binary, Face Count)
         ensure_binary_stl(stl_path)
 
         # 1. Load Mesh
@@ -247,7 +267,6 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         # 8. Construct Final XML
         ur5e_ref = os.path.basename(PATCHED_UR5E_FILE)
 
-        # meshdir="../" allows MuJoCo to find assets in the project root
         xml_content = f"""<mujoco model="approximated_pillars">
   <compiler angle="radian" meshdir="../"/>
 
@@ -307,7 +326,6 @@ def main():
     scale_factor = 1.0
     try:
         # Pre-load just to check scale, but we will load again later.
-        # Efficient? Maybe not, but robust.
         mesh = trimesh.load(stl_path)
         bounds = mesh.bounds
         max_dim = np.max(bounds[1] - bounds[0])
