@@ -3,6 +3,7 @@ import trimesh
 from sklearn.cluster import KMeans
 import os
 import sys
+import re
 
 # Parameters
 NUM_CYLINDERS = 16
@@ -14,7 +15,7 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
     """
     Approximates the geometry in the STL file using 32 pillars.
     If the geometry is simple, unused pillars are moved to (10, 0, 0).
-    Also includes the UR5e robot.
+    Also includes the UR5e robot at 'robot_pos'.
     """
     print(f"🚀 Starting Pillar Generation")
     print(f"📂 Input STL: {stl_path}")
@@ -35,7 +36,6 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
         points, _ = trimesh.sample.sample_surface(mesh, SAMPLE_COUNT)
 
         # 3. K-Means Clustering
-        # We always ask for 32 clusters to satisfy the "32 pillar" constraint of the neural net input
         kmeans = KMeans(n_clusters=TOTAL_CLUSTERS, n_init=10, random_state=42)
         kmeans.fit(points)
         centers = kmeans.cluster_centers_
@@ -53,35 +53,44 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
                 continue
 
             cluster_points = points[labels == i]
-            center = centers[i]
             count = cluster_counts[i]
 
-            # FIX: Use 2D (XY) distance for radius
-            dists_xy = np.linalg.norm(cluster_points[:, :2] - center[:2], axis=1)
-            radius = np.max(dists_xy)
+            # --- AABB Calculation ---
+            min_x, min_y, min_z = np.min(cluster_points, axis=0)
+            max_x, max_y, max_z = np.max(cluster_points, axis=0)
 
-            min_z = np.min(cluster_points[:, 2])
-            max_z = np.max(cluster_points[:, 2])
+            center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, (min_z + max_z) / 2.0]
+
+            dx = max_x - min_x
+            dy = max_y - min_y
             height = (max_z - min_z) / 2.0
-            center[2] = (max_z + min_z) / 2.0 # Update center Z to mid-height
 
             # Constraints
-            radius = max(radius, 0.01)
+            dx = max(dx, 0.01)
+            dy = max(dy, 0.01)
             height = max(height, 0.01)
+
+            # Calculate metrics for shape selection
+            elongation = max(dx, dy) / min(dx, dy)
+            radius_tight = (dx + dy) / 4.0
+            radius_cover = np.sqrt(dx*dx + dy*dy) / 2.0
 
             cluster_props.append({
                 'idx': i,
                 'valid': True,
-                'center': center,
-                'radius': radius,
+                'center': np.array(center),
+                'dx': dx,
+                'dy': dy,
                 'height': height,
+                'radius': radius_tight, # Use tight radius by default
+                'radius_cover': radius_cover,
+                'elongation': elongation,
                 'count': count,
                 'reason': 'ok'
             })
 
         # --- Refined Pruning Logic ---
         # 1. Sort by point count (importance)
-        # We want to keep the most substantial clusters.
         cluster_props.sort(key=lambda x: x.get('count', 0), reverse=True)
 
         # 2. Check for Overlaps and redundancy
@@ -91,10 +100,10 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
             p1 = valid_props[i]
             if not p1['valid']: continue
 
-            # Prune small speckles (unless we have very few clusters)
-            # If radius is tiny relative to height or absolute tiny
-            if p1['radius'] < 0.01 and p1['count'] < (SAMPLE_COUNT / 200):
-                # Very small and few points
+            # Prune small speckles
+            # If volume is tiny relative to overall bounding box?
+            # Or just count threshold relative to total points
+            if p1['count'] < (SAMPLE_COUNT / 200) and p1['radius'] < 0.02:
                 p1['valid'] = False
                 p1['reason'] = 'too_small'
                 continue
@@ -106,97 +115,132 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
                 # Distance between centers
                 dist = np.linalg.norm(p1['center'] - p2['center'])
 
-                # Overlap threshold: if distance is less than the larger radius?
-                # Or if they are very close.
-                # Heuristic: If they are closer than 5cm, AND one is significantly smaller or they are similar
-                # Let's say if dist < 0.05 (5cm)
+                # Overlap threshold: if distance is less than sum of radii?
+                # Or just absolute distance check for "same object"
                 if dist < 0.05:
-                    # Merge/Kill p2 (since p1 is larger due to sort)
-                    # We strictly kill p2 to "use 1 or 2" pillars if possible
                     p2['valid'] = False
                     p2['reason'] = f'overlap_with_{p1["idx"]}'
 
-        # Re-sort by index to restore order if needed? Not strictly necessary for XML, but
-        # we assign cylinders 1-16 and boxes 1-16.
-        # We need to map the VALID ones to slots, and INVALID to far away.
-        # But wait, 'idx' in cluster_props was the original K-Means label.
-        # We have 32 slots total (16 cyl, 16 box).
-        # We should fill the slots with VALID props first.
-
         valid_list = [p for p in cluster_props if p['valid']]
 
-        # If we have NO valid clusters (shouldn't happen), keep at least one
+        # If we have NO valid clusters, keep the largest
         if not valid_list and cluster_props:
              cluster_props[0]['valid'] = True
              valid_list = [cluster_props[0]]
 
         print(f"✅ Found {len(valid_list)} valid pillars out of {TOTAL_CLUSTERS}.")
 
-        # 5. Generate XML Strings
+        # 5. Patch UR5e XML
+        # Read ur5e.xml and replace pos
+        try:
+            with open("ur5e.xml", "r") as f:
+                ur5e_content = f.read()
+
+            # Find and replace robot base pos
+            # Pattern: <body name="robot0:ur5e:base" pos="0 0 0" ...>
+            # We want to replace pos="0 0 0" with pos="x y z"
+            # Be robust with spaces
+
+            pos_str_new = f'{robot_pos[0]:.4f} {robot_pos[1]:.4f} {robot_pos[2]:.4f}'
+
+            # Regex replacement
+            pattern = r'(<body\s+name="robot0:ur5e:base"\s+pos=")[^"]+(")'
+            replacement = r'\g<1>' + pos_str_new + r'\g<2>'
+
+            new_ur5e_content = re.sub(pattern, replacement, ur5e_content)
+
+            patched_ur5e_filename = "ur5e_fitted.xml"
+            with open(patched_ur5e_filename, "w") as f:
+                f.write(new_ur5e_content)
+
+            print(f"✅ Created patched UR5e XML: {patched_ur5e_filename}")
+
+        except Exception as e:
+            print(f"⚠️  Failed to patch ur5e.xml: {e}. Using original.")
+            patched_ur5e_filename = "ur5e.xml"
+
+        # 6. Generate XML Strings
         pillar_geoms = []
 
-        shift_vector = np.array(robot_pos)
+        # We need to fill 16 Cylinder and 16 Box slots.
+        # We prefer to put elongated clusters into Box slots.
+        # We prefer square/round clusters into Cylinder slots.
 
-        # We have 16 cylinders and 16 boxes to fill.
-        # We distribute the valid clusters among them.
-        # Since K-means doesn't distinguish shape, we just assign the first N to cylinders, next M to boxes.
+        # Separate slots
+        cyl_slots = list(range(1, NUM_CYLINDERS + 1))
+        box_slots = list(range(1, NUM_BOXES + 1))
 
-        valid_iter = iter(valid_list)
+        # Categorize valid clusters
+        box_candidates = []
+        cyl_candidates = []
 
-        # Helper to get next valid prop or None
-        def get_next_valid():
-            try:
-                return next(valid_iter)
-            except StopIteration:
-                return None
-
-        # Generate Cylinders (1-16)
-        for i in range(1, NUM_CYLINDERS + 1):
-            prop = get_next_valid()
-            if prop:
-                # Valid Pillar
-                c = prop['center'] - shift_vector
-                pos_str = f"{c[0]:.4f} {c[1]:.4f} {c[2]:.4f}"
-                size_str = f"{prop['radius']:.4f} {prop['height']:.4f}"
-                rgba = "0.5 0.5 0.5 1"
+        for p in valid_list:
+            if p['elongation'] > 1.5: # Clearly rectangular
+                box_candidates.append(p)
             else:
-                # Unused / Far Away
-                pos_str = "10 0 0"
-                size_str = "0.01 0.01"
-                rgba = "0.5 0.5 0.5 0" # Invisible
+                cyl_candidates.append(p)
 
-            geom = f'    <geom name="pillar_cyl_{i}" type="cylinder" size="{size_str}" pos="{pos_str}" rgba="{rgba}" contype="1" conaffinity="1"/>'
+        # Assignment Logic
+        assigned_geoms = [] # List of tuples (geom_string, slot_type, slot_idx)
+
+        # Fill Box Slots with Box Candidates
+        for _ in range(len(box_slots)):
+            if not box_candidates and not cyl_candidates: break # No more clusters
+
+            p = None
+            if box_candidates:
+                p = box_candidates.pop(0)
+            elif cyl_candidates:
+                # Fallback: put cylinder candidate in box slot
+                p = cyl_candidates.pop(0)
+
+            if p:
+                idx = box_slots.pop(0)
+                # Generate Box Geom
+                c = p['center']
+                pos_str = f"{c[0]:.4f} {c[1]:.4f} {c[2]:.4f}"
+                size_str = f"{p['dx']/2.0:.4f} {p['dy']/2.0:.4f} {p['height']:.4f}"
+                rgba = "0.5 0.5 0.5 1"
+                geom = f'    <geom name="pillar_box_{idx}" type="box" size="{size_str}" pos="{pos_str}" rgba="{rgba}" contype="1" conaffinity="1"/>'
+                pillar_geoms.append(geom)
+
+        # Fill Cylinder Slots with Cylinder Candidates
+        for _ in range(len(cyl_slots)):
+            if not cyl_candidates and not box_candidates: break
+
+            p = None
+            if cyl_candidates:
+                p = cyl_candidates.pop(0)
+            elif box_candidates:
+                # Fallback: put box candidate in cylinder slot
+                p = box_candidates.pop(0)
+
+            if p:
+                idx = cyl_slots.pop(0)
+                # Generate Cylinder Geom
+                c = p['center']
+                pos_str = f"{c[0]:.4f} {c[1]:.4f} {c[2]:.4f}"
+                size_str = f"{p['radius']:.4f} {p['height']:.4f}"
+                rgba = "0.5 0.5 0.5 1"
+                geom = f'    <geom name="pillar_cyl_{idx}" type="cylinder" size="{size_str}" pos="{pos_str}" rgba="{rgba}" contype="1" conaffinity="1"/>'
+                pillar_geoms.append(geom)
+
+        # Fill remaining unused slots with invisible geoms
+        for idx in box_slots:
+            geom = f'    <geom name="pillar_box_{idx}" type="box" size="0.01 0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>'
             pillar_geoms.append(geom)
 
-        # Generate Boxes (1-16)
-        for i in range(1, NUM_BOXES + 1):
-            prop = get_next_valid()
-            if prop:
-                # Valid Pillar
-                c = prop['center'] - shift_vector
-                pos_str = f"{c[0]:.4f} {c[1]:.4f} {c[2]:.4f}"
-                # Box size is half-width
-                half_w = prop['radius'] / 1.414
-                size_str = f"{half_w:.4f} {half_w:.4f} {prop['height']:.4f}"
-                rgba = "0.5 0.5 0.5 1"
-            else:
-                # Unused / Far Away
-                pos_str = "10 0 0"
-                size_str = "0.01 0.01 0.01"
-                rgba = "0.5 0.5 0.5 0"
-
-            geom = f'    <geom name="pillar_box_{i}" type="box" size="{size_str}" pos="{pos_str}" rgba="{rgba}" contype="1" conaffinity="1"/>'
+        for idx in cyl_slots:
+            geom = f'    <geom name="pillar_cyl_{idx}" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>'
             pillar_geoms.append(geom)
 
-        # 6. Construct Final XML
-        # Note: ur5e.xml includes its own worldbody, so we include it at top level.
-        # We assume ur5e.xml defines the robot at 0,0,0.
-        # Our pillars are shifted so the desired robot location (on the table) matches 0,0,0.
+        # 7. Construct Final XML
+        # Use patched UR5e
 
         xml_content = f"""<mujoco model="approximated_pillars">
   <compiler angle="radian"/>
 
-  <include file="ur5e.xml"/>
+  <include file="{patched_ur5e_filename}"/>
 
   <option timestep="0.002" gravity="0 0 -9.81"/>
 
@@ -211,7 +255,7 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
     <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
 
     <!-- Generated Pillars -->
-    <!-- Shifted by {-shift_vector} relative to original mesh to align robot site to 0,0,0 -->
+    <!-- Positioned at absolute coordinates from STL (Robot placed at detected disk center via ur5e_fitted.xml) -->
 {chr(10).join(pillar_geoms)}
 
   </worldbody>
@@ -229,7 +273,6 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
         traceback.print_exc()
 
 if __name__ == "__main__":
-    # Args: input_stl output_xml [rx ry rz]
     if len(sys.argv) > 1:
         stl_file = sys.argv[1]
         out_file = "fitted_pillars.xml"
@@ -240,12 +283,6 @@ if __name__ == "__main__":
 
         if len(sys.argv) > 5:
             r_pos = [float(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5])]
-
-        # Handle the case where args might be passed as "x y z" or "x" "y" "z"
-        # main_workflow passes "x y z" as 3 args usually if shell splitting works,
-        # but the previous code parsing was:
-        # if len > 5: r_pos = [argv[3], argv[4], argv[5]]
-        # Let's ensure we support that.
 
         generate_pillars_xml(stl_file, out_file, r_pos)
     else:
