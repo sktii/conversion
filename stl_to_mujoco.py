@@ -28,7 +28,7 @@ def ensure_dir(d):
 def ensure_binary_stl(filepath):
     """
     Checks if the STL is binary and converts if necessary.
-    Also attempts mesh simplification if faces > limit, but gracefully fails if libraries missing.
+    Also attempts mesh simplification if faces > limit.
     """
     try:
         needs_save = False
@@ -42,16 +42,11 @@ def ensure_binary_stl(filepath):
             reason = "ASCII format detected"
 
         # 2. Check Face Count (Load mesh)
-        # Only load if we suspect we need to check, or if we are already saving.
-        # But to check face count we must load.
         mesh = trimesh.load(filepath)
 
         if len(mesh.faces) > MUJOCO_FACE_LIMIT:
             print(f"⚠️  High face count ({len(mesh.faces)}). Attempting simplification...")
-            # Try simplification methods safely
             try:
-                # Try Open3D / Quadric Decimation if available
-                # Note: Trimesh method names vary by version/backend.
                 if hasattr(mesh, 'simplify_quadric_decimation'):
                     mesh = mesh.simplify_quadric_decimation(MUJOCO_FACE_LIMIT)
                     needs_save = True
@@ -63,7 +58,7 @@ def ensure_binary_stl(filepath):
 
         if needs_save:
             print(f"ℹ️  Optimizing STL ({reason})...")
-            mesh.export(filepath, file_type='stl') # Defaults to binary
+            mesh.export(filepath, file_type='stl')
             print(f"✅ Saved optimized Binary STL: {filepath}")
         else:
             print(f"✅ STL is valid (Binary, {len(mesh.faces)} faces).")
@@ -76,11 +71,12 @@ def generate_raw_xml(stl_path, scale_factor=1.0):
     stl_filename = os.path.basename(stl_path)
     scale_str = f"{scale_factor} {scale_factor} {scale_factor}"
 
-    abs_stl_path = os.path.abspath(stl_path)
-    stl_dir = os.path.dirname(abs_stl_path)
+    # User requested to match structure of arena_ur5e.xml (no meshdir).
+    # Since raw_mesh.xml is in XML/ and STL is in STL/, we use relative path.
+    relative_stl_path = f"../STL/{stl_filename}"
 
     xml_content = f"""<mujoco model="raw_mesh_view">
-  <compiler angle="radian" meshdir="{stl_dir}"/>
+  <compiler angle="radian"/>
 
   <option timestep="0.002" gravity="0 0 -9.81"/>
 
@@ -89,7 +85,7 @@ def generate_raw_xml(stl_path, scale_factor=1.0):
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
 
-    <mesh name="target_mesh" file="{stl_filename}" scale="{scale_str}"/>
+    <mesh name="target_mesh" file="{relative_stl_path}" scale="{scale_str}"/>
   </asset>
 
   <worldbody>
@@ -127,30 +123,21 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         return
 
     try:
-        # Check and Fix STL Format (ASCII vs Binary, Face Count)
         ensure_binary_stl(stl_path)
-
-        # 1. Load Mesh
         mesh = trimesh.load(stl_path)
 
-        # Apply Scale if needed
         if scale_factor != 1.0:
             mesh.apply_scale(scale_factor)
             print(f"   -> Applied scale factor {scale_factor} to internal mesh.")
 
-        # 2. Find Robot Position (on scaled mesh)
         robot_pos = find_disk_center(mesh)
         print(f"🤖 Detected Robot Placement: {robot_pos}")
 
-        # 3. Sample Points
         points, _ = trimesh.sample.sample_surface(mesh, SAMPLE_COUNT)
-
-        # 4. K-Means Clustering
         kmeans = KMeans(n_clusters=TOTAL_CLUSTERS, n_init=10, random_state=42)
         kmeans.fit(points)
         labels = kmeans.labels_
 
-        # 5. Smart Merging Logic
         unique, counts = np.unique(labels, return_counts=True)
         cluster_counts = dict(zip(unique, counts))
 
@@ -172,7 +159,6 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
                 'merged': False
             })
 
-        # Iterative Merge
         final_pillars = []
         while clusters:
             clusters.sort(key=lambda x: x['count'], reverse=True)
@@ -215,6 +201,26 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         try:
             tree = ET.parse("ur5e.xml")
             root = tree.getroot()
+
+            # --- PATCH ASSET PATHS ---
+            # If we don't use meshdir in compiled XML, we must update asset paths
+            # in the included file (ur5e_fitted.xml) to point correctly.
+            # Since ur5e_fitted.xml is in XML/, and assets are in root,
+            # we need to prepend "../" to all 'file' attributes in <mesh> assets.
+
+            for mesh_tag in root.iter('mesh'):
+                path = mesh_tag.get('file')
+                if path and not path.startswith('../'):
+                    mesh_tag.set('file', '../' + path)
+
+            # Also texture maps if any (though ur5e.xml usually uses built-in materials, check assets)
+            for tex_tag in root.iter('texture'):
+                # Some textures are built-in, check for file attr
+                path = tex_tag.get('file')
+                if path and not path.startswith('../'):
+                    tex_tag.set('file', '../' + path)
+
+            # Update Robot Position
             found = False
             for body in root.iter('body'):
                 if body.get('name') == "robot0:ur5e:base":
@@ -225,6 +231,7 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
 
             if not found:
                 print("⚠️  Warning: Could not find body 'robot0:ur5e:base' in ur5e.xml")
+
             tree.write(PATCHED_UR5E_FILE)
             print(f"✅ Created patched UR5e XML: {os.path.abspath(PATCHED_UR5E_FILE)}")
         except Exception as e:
@@ -273,8 +280,9 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         # 8. Construct Final XML
         ur5e_ref = os.path.basename(PATCHED_UR5E_FILE)
 
+        # REMOVED meshdir="../"
         xml_content = f"""<mujoco model="approximated_pillars">
-  <compiler angle="radian" meshdir="../"/>
+  <compiler angle="radian"/>
 
   <include file="{ur5e_ref}"/>
 
@@ -328,7 +336,6 @@ def main():
         print("Usage: python stl_to_mujoco.py [stl_path]")
         return
 
-    # Check Scale
     scale_factor = 1.0
     try:
         mesh = trimesh.load(stl_path)
