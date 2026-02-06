@@ -3,7 +3,7 @@ import trimesh
 from sklearn.cluster import KMeans
 import os
 import sys
-import re
+import xml.etree.ElementTree as ET
 
 # Parameters
 NUM_CYLINDERS = 16
@@ -21,7 +21,7 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
     print(f"📂 Input STL: {stl_path}")
 
     if robot_pos is None:
-        robot_pos = [0, 0, 0] # Default
+        robot_pos = [0.0, 0.0, 0.0]
     print(f"🤖 Robot Placement: {robot_pos}")
 
     if not os.path.exists(stl_path):
@@ -101,8 +101,6 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
             if not p1['valid']: continue
 
             # Prune small speckles
-            # If volume is tiny relative to overall bounding box?
-            # Or just count threshold relative to total points
             if p1['count'] < (SAMPLE_COUNT / 200) and p1['radius'] < 0.02:
                 p1['valid'] = False
                 p1['reason'] = 'too_small'
@@ -115,8 +113,7 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
                 # Distance between centers
                 dist = np.linalg.norm(p1['center'] - p2['center'])
 
-                # Overlap threshold: if distance is less than sum of radii?
-                # Or just absolute distance check for "same object"
+                # Overlap threshold
                 if dist < 0.05:
                     p2['valid'] = False
                     p2['reason'] = f'overlap_with_{p1["idx"]}'
@@ -131,28 +128,29 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
         print(f"✅ Found {len(valid_list)} valid pillars out of {TOTAL_CLUSTERS}.")
 
         # 5. Patch UR5e XML
-        # Read ur5e.xml and replace pos
+        # Read ur5e.xml and update robot pos using XML parser
         try:
-            with open("ur5e.xml", "r") as f:
-                ur5e_content = f.read()
+            tree = ET.parse("ur5e.xml")
+            root = tree.getroot()
 
-            # Find and replace robot base pos
-            # Pattern: <body name="robot0:ur5e:base" pos="0 0 0" ...>
-            # We want to replace pos="0 0 0" with pos="x y z"
-            # Be robust with spaces
+            # Find the robot base body.
+            # It's likely in <worldbody><body name="robot0:ur5e:base"...>
+            # But namespaces might be tricky if present. MuJoCo usually doesn't use XML namespaces.
 
-            pos_str_new = f'{robot_pos[0]:.4f} {robot_pos[1]:.4f} {robot_pos[2]:.4f}'
+            found = False
+            # Search recursively for body with name
+            for body in root.iter('body'):
+                if body.get('name') == "robot0:ur5e:base":
+                    pos_str_new = f'{robot_pos[0]:.4f} {robot_pos[1]:.4f} {robot_pos[2]:.4f}'
+                    body.set('pos', pos_str_new)
+                    found = True
+                    break
 
-            # Regex replacement
-            pattern = r'(<body\s+name="robot0:ur5e:base"\s+pos=")[^"]+(")'
-            replacement = r'\g<1>' + pos_str_new + r'\g<2>'
-
-            new_ur5e_content = re.sub(pattern, replacement, ur5e_content)
+            if not found:
+                print("⚠️  Warning: Could not find body 'robot0:ur5e:base' in ur5e.xml")
 
             patched_ur5e_filename = "ur5e_fitted.xml"
-            with open(patched_ur5e_filename, "w") as f:
-                f.write(new_ur5e_content)
-
+            tree.write(patched_ur5e_filename)
             print(f"✅ Created patched UR5e XML: {patched_ur5e_filename}")
 
         except Exception as e:
@@ -162,11 +160,6 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
         # 6. Generate XML Strings
         pillar_geoms = []
 
-        # We need to fill 16 Cylinder and 16 Box slots.
-        # We prefer to put elongated clusters into Box slots.
-        # We prefer square/round clusters into Cylinder slots.
-
-        # Separate slots
         cyl_slots = list(range(1, NUM_CYLINDERS + 1))
         box_slots = list(range(1, NUM_BOXES + 1))
 
@@ -181,22 +174,19 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
                 cyl_candidates.append(p)
 
         # Assignment Logic
-        assigned_geoms = [] # List of tuples (geom_string, slot_type, slot_idx)
 
-        # Fill Box Slots with Box Candidates
+        # Fill Box Slots
         for _ in range(len(box_slots)):
-            if not box_candidates and not cyl_candidates: break # No more clusters
+            if not box_candidates and not cyl_candidates: break
 
             p = None
             if box_candidates:
                 p = box_candidates.pop(0)
             elif cyl_candidates:
-                # Fallback: put cylinder candidate in box slot
                 p = cyl_candidates.pop(0)
 
             if p:
                 idx = box_slots.pop(0)
-                # Generate Box Geom
                 c = p['center']
                 pos_str = f"{c[0]:.4f} {c[1]:.4f} {c[2]:.4f}"
                 size_str = f"{p['dx']/2.0:.4f} {p['dy']/2.0:.4f} {p['height']:.4f}"
@@ -204,7 +194,7 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
                 geom = f'    <geom name="pillar_box_{idx}" type="box" size="{size_str}" pos="{pos_str}" rgba="{rgba}" contype="1" conaffinity="1"/>'
                 pillar_geoms.append(geom)
 
-        # Fill Cylinder Slots with Cylinder Candidates
+        # Fill Cylinder Slots
         for _ in range(len(cyl_slots)):
             if not cyl_candidates and not box_candidates: break
 
@@ -212,12 +202,10 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
             if cyl_candidates:
                 p = cyl_candidates.pop(0)
             elif box_candidates:
-                # Fallback: put box candidate in cylinder slot
                 p = box_candidates.pop(0)
 
             if p:
                 idx = cyl_slots.pop(0)
-                # Generate Cylinder Geom
                 c = p['center']
                 pos_str = f"{c[0]:.4f} {c[1]:.4f} {c[2]:.4f}"
                 size_str = f"{p['radius']:.4f} {p['height']:.4f}"
@@ -225,7 +213,7 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
                 geom = f'    <geom name="pillar_cyl_{idx}" type="cylinder" size="{size_str}" pos="{pos_str}" rgba="{rgba}" contype="1" conaffinity="1"/>'
                 pillar_geoms.append(geom)
 
-        # Fill remaining unused slots with invisible geoms
+        # Fill remaining unused slots
         for idx in box_slots:
             geom = f'    <geom name="pillar_box_{idx}" type="box" size="0.01 0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>'
             pillar_geoms.append(geom)
@@ -235,7 +223,6 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
             pillar_geoms.append(geom)
 
         # 7. Construct Final XML
-        # Use patched UR5e
 
         xml_content = f"""<mujoco model="approximated_pillars">
   <compiler angle="radian"/>
@@ -282,7 +269,10 @@ if __name__ == "__main__":
             out_file = sys.argv[2]
 
         if len(sys.argv) > 5:
-            r_pos = [float(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5])]
+            try:
+                r_pos = [float(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5])]
+            except ValueError:
+                print("⚠️  Invalid robot position arguments. Using default [0,0,0].")
 
         generate_pillars_xml(stl_file, out_file, r_pos)
     else:
