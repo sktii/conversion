@@ -11,6 +11,12 @@ NUM_BOXES = 16
 TOTAL_CLUSTERS = NUM_CYLINDERS + NUM_BOXES
 SAMPLE_COUNT = 5000
 
+# Scale Threshold
+# If the maximum dimension of the object exceeds this value (in meters),
+# we assume it's in millimeters and scale by 0.001.
+# A table is rarely > 10 meters.
+SCALE_THRESHOLD = 10.0
+
 def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=None):
     """
     Approximates the geometry in the STL file using 32 pillars.
@@ -22,7 +28,9 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
 
     if robot_pos is None:
         robot_pos = [0.0, 0.0, 0.0]
-    print(f"🤖 Robot Placement: {robot_pos}")
+
+    # Store original robot_pos to check later, but we will mutate it if we detect scale
+    robot_pos = list(robot_pos)
 
     if not os.path.exists(stl_path):
         print(f"❌ Error: STL file not found: {stl_path}")
@@ -31,6 +39,29 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
     try:
         # 1. Load Mesh
         mesh = trimesh.load(stl_path)
+
+        # --- SCALE DETECTION ---
+        bounds = mesh.bounds
+        extents = bounds[1] - bounds[0]
+        max_dim = np.max(extents)
+
+        scale_factor = 1.0
+        if max_dim > SCALE_THRESHOLD:
+            print(f"⚠️  Detected large dimensions (max={max_dim:.2f}). Assuming Millimeters.")
+            print(f"   -> Scaling mesh by 0.001 to convert to Meters.")
+            scale_factor = 0.001
+            mesh.apply_scale(scale_factor)
+
+            # Also scale the robot_pos if it looks large?
+            # Usually find_disk_center returns coords in the same unit as the mesh.
+            # So if mesh was mm, robot_pos is likely mm.
+            if max(abs(x) for x in robot_pos) > SCALE_THRESHOLD:
+                print(f"   -> Scaling robot position by 0.001.")
+                robot_pos = [x * scale_factor for x in robot_pos]
+            else:
+                 print(f"   -> Robot position seems small ({robot_pos}), keeping as is (check this!).")
+
+        print(f"🤖 Robot Placement (Final): {robot_pos}")
 
         # 2. Sample Points
         points, _ = trimesh.sample.sample_surface(mesh, SAMPLE_COUNT)
@@ -132,10 +163,6 @@ def generate_pillars_xml(stl_path, output_xml="fitted_pillars.xml", robot_pos=No
         try:
             tree = ET.parse("ur5e.xml")
             root = tree.getroot()
-
-            # Find the robot base body.
-            # It's likely in <worldbody><body name="robot0:ur5e:base"...>
-            # But namespaces might be tricky if present. MuJoCo usually doesn't use XML namespaces.
 
             found = False
             # Search recursively for body with name

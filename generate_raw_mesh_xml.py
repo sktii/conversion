@@ -1,25 +1,39 @@
 import os
 import sys
+import trimesh
+import numpy as np
+
+# Scale Threshold: 10 meters. If object is bigger, it's likely mm.
+SCALE_THRESHOLD = 10.0
 
 def generate_raw_xml(stl_path, output_xml="raw_mesh.xml"):
     """
     Wraps an STL mesh file into a simple MuJoCo XML.
-    This corresponds to 'stp transfer to xml file, don't need anyother modify'.
+    Auto-detects scale (mm vs m) and adds scale attribute if needed.
     """
 
     if not os.path.exists(stl_path):
         print(f"❌ Error: STL file not found: {stl_path}")
         return
 
-    # Use basename for asset reference to avoid absolute path issues in asset loading if desired,
-    # but relative path is better.
     stl_filename = os.path.basename(stl_path)
     stl_dir = os.path.dirname(os.path.abspath(stl_path))
 
-    # We need to construct a relative path or absolute path for the mesh file attribute
-    # Since XML might be run from anywhere, absolute path is safest for this generated file,
-    # or relative if we assume a specific run directory.
-    # Let's use the provided path directly.
+    # Check scale
+    try:
+        mesh = trimesh.load(stl_path)
+        bounds = mesh.bounds
+        max_dim = np.max(bounds[1] - bounds[0])
+
+        scale_str = "1 1 1"
+        if max_dim > SCALE_THRESHOLD:
+            print(f"⚠️  Detected large dimensions (max={max_dim:.2f}). Assuming Millimeters.")
+            print(f"   -> Adding scale='0.001 0.001 0.001' to mesh asset.")
+            scale_str = "0.001 0.001 0.001"
+
+    except Exception as e:
+        print(f"⚠️  Could not analyze mesh for scaling: {e}. Defaulting to 1 1 1.")
+        scale_str = "1 1 1"
 
     mesh_name = "target_mesh"
 
@@ -33,7 +47,7 @@ def generate_raw_xml(stl_path, output_xml="raw_mesh.xml"):
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
 
-    <mesh name="{mesh_name}" file="{stl_filename}"/>
+    <mesh name="{mesh_name}" file="{stl_filename}" scale="{scale_str}"/>
   </asset>
 
   <worldbody>
@@ -41,7 +55,6 @@ def generate_raw_xml(stl_path, output_xml="raw_mesh.xml"):
     <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
 
     <!-- The Raw Mesh -->
-    <!-- Position is default (0,0,0) as per 'don't need anyother modify' -->
     <geom name="imported_part" type="mesh" mesh="{mesh_name}" rgba="0.8 0.8 0.8 1"/>
   </worldbody>
 </mujoco>
