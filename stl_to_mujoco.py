@@ -26,22 +26,16 @@ def ensure_dir(d):
         os.makedirs(d)
 
 def ensure_binary_stl(filepath):
-    """
-    Checks if the STL is binary and converts if necessary.
-    Also attempts mesh simplification if faces > limit.
-    """
     try:
         needs_save = False
         reason = ""
 
-        # 1. Check Header (ASCII vs Binary)
         with open(filepath, 'rb') as f:
             header = f.read(5)
         if header.startswith(b'solid'):
             needs_save = True
             reason = "ASCII format detected"
 
-        # 2. Check Face Count (Load mesh)
         mesh = trimesh.load(filepath)
 
         if len(mesh.faces) > MUJOCO_FACE_LIMIT:
@@ -71,9 +65,8 @@ def generate_raw_xml(stl_path, scale_factor=1.0):
     stl_filename = os.path.basename(stl_path)
     scale_str = f"{scale_factor} {scale_factor} {scale_factor}"
 
-    # User requested to match structure of arena_ur5e.xml (no meshdir).
-    # Since raw_mesh.xml is in XML/ and STL is in STL/, we use relative path.
-    relative_stl_path = f"../STL/{stl_filename}"
+    # Path relative to project root, NO "../"
+    relative_stl_path = f"STL/{stl_filename}"
 
     xml_content = f"""<mujoco model="raw_mesh_view">
   <compiler angle="radian"/>
@@ -203,22 +196,11 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
             root = tree.getroot()
 
             # --- PATCH ASSET PATHS ---
-            # If we don't use meshdir in compiled XML, we must update asset paths
-            # in the included file (ur5e_fitted.xml) to point correctly.
-            # Since ur5e_fitted.xml is in XML/, and assets are in root,
-            # we need to prepend "../" to all 'file' attributes in <mesh> assets.
+            # DO NOT prepend "../" as per user request.
+            # We assume paths in ur5e.xml are relative to project root (e.g. "universal_robots_ur5e/...")
+            # and that the user will load the XML from the project root or configure MuJoCo appropriately.
 
-            for mesh_tag in root.iter('mesh'):
-                path = mesh_tag.get('file')
-                if path and not path.startswith('../'):
-                    mesh_tag.set('file', '../' + path)
-
-            # Also texture maps if any (though ur5e.xml usually uses built-in materials, check assets)
-            for tex_tag in root.iter('texture'):
-                # Some textures are built-in, check for file attr
-                path = tex_tag.get('file')
-                if path and not path.startswith('../'):
-                    tex_tag.set('file', '../' + path)
+            # (No path modification loop here)
 
             # Update Robot Position
             found = False
@@ -280,7 +262,7 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         # 8. Construct Final XML
         ur5e_ref = os.path.basename(PATCHED_UR5E_FILE)
 
-        # REMOVED meshdir="../"
+        # REMOVED meshdir completely
         xml_content = f"""<mujoco model="approximated_pillars">
   <compiler angle="radian"/>
 
