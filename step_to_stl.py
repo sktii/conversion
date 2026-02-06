@@ -2,6 +2,8 @@ import os
 import sys
 import glob
 import time
+import tempfile
+import shutil
 
 # Try importing necessary libraries
 try:
@@ -50,7 +52,11 @@ def convert_step_to_stl(input_filename=None):
 
     # 2. Setup Output Path
     if not os.path.exists(OUTPUT_FOLDER):
-        os.makedirs(OUTPUT_FOLDER)
+        try:
+            os.makedirs(OUTPUT_FOLDER)
+        except OSError as e:
+            print(f"❌ Error creating output directory: {e}")
+            return None
 
     file_name = os.path.basename(input_path)
     base_name = os.path.splitext(file_name)[0]
@@ -97,62 +103,58 @@ def convert_step_to_stl(input_filename=None):
             return None
 
         meshes = []
-        temp_dir = os.path.join(OUTPUT_FOLDER, "temp_parts")
-        if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
+        # Use system temp directory to avoid permission issues
+        temp_dir = tempfile.mkdtemp(prefix="cad_conversion_")
+        print(f"ℹ️  Using temporary directory: {temp_dir}")
 
         success_count = 0
 
-        for i, solid in enumerate(solids):
-            part_file = os.path.join(temp_dir, f"part_{i}.stl")
-            try:
-                # Wrap solid in Workplane to export
-                # Note: cq.exporters.export expects a shape or workplane
-                # We can try exporting the solid object directly if supported, or wrap it.
-                # 'solid' is a OCP TopoDS_Solid object usually wrapped by CQ logic.
-                # Let's wrap it in a Workplane to be safe and standard.
-                # FIX: Use newObject([solid]) to ensure it's in the stack
-                wp = cq.Workplane("XY").newObject([solid])
-
-                cq.exporters.export(
-                    wp,
-                    part_file,
-                    exportType="STL",
-                    tolerance=TOLERANCE,
-                    angularTolerance=ANGULAR_TOLERANCE
-                )
-
-                if os.path.exists(part_file) and os.path.getsize(part_file) > 0:
-                    # Load back with trimesh
-                    m = trimesh.load(part_file)
-                    meshes.append(m)
-                    success_count += 1
-                    print(f"   ✅ Processed solid {i+1}/{len(solids)}", end="\r")
-                else:
-                    print(f"   ⚠️  Failed to export solid {i+1} (empty file)")
-            except Exception as e:
-                print(f"   ⚠️  Error processing solid {i+1}: {e}")
-
-        print(f"\nℹ️  Successfully processed {success_count}/{len(solids)} parts.")
-
-        if not meshes:
-            print("❌ No parts could be converted.")
-            return None
-
-        # Concatenate
-        print("⏳ Merging meshes...")
-        combined_mesh = trimesh.util.concatenate(meshes)
-
-        print(f"⏳ Saving combined mesh to {output_path}...")
-        combined_mesh.export(output_path)
-
-        # Clean up temp
         try:
-            for f in glob.glob(os.path.join(temp_dir, "*.stl")):
-                os.remove(f)
-            os.rmdir(temp_dir)
-        except:
-            pass # ignore cleanup errors
+            for i, solid in enumerate(solids):
+                part_file = os.path.join(temp_dir, f"part_{i}.stl")
+                try:
+                    # FIX: Use newObject([solid]) to ensure it's in the stack
+                    wp = cq.Workplane("XY").newObject([solid])
+
+                    cq.exporters.export(
+                        wp,
+                        part_file,
+                        exportType="STL",
+                        tolerance=TOLERANCE,
+                        angularTolerance=ANGULAR_TOLERANCE
+                    )
+
+                    if os.path.exists(part_file) and os.path.getsize(part_file) > 0:
+                        # Load back with trimesh
+                        m = trimesh.load(part_file)
+                        meshes.append(m)
+                        success_count += 1
+                        print(f"   ✅ Processed solid {i+1}/{len(solids)}", end="\r")
+                    else:
+                        print(f"   ⚠️  Failed to export solid {i+1} (empty file)")
+                except Exception as e:
+                    print(f"   ⚠️  Error processing solid {i+1}: {e}")
+
+            print(f"\nℹ️  Successfully processed {success_count}/{len(solids)} parts.")
+
+            if not meshes:
+                print("❌ No parts could be converted.")
+                return None
+
+            # Concatenate
+            print("⏳ Merging meshes...")
+            combined_mesh = trimesh.util.concatenate(meshes)
+
+            print(f"⏳ Saving combined mesh to {output_path}...")
+            combined_mesh.export(output_path)
+
+        finally:
+            # Clean up temp
+            try:
+                shutil.rmtree(temp_dir)
+                print(f"ℹ️  Cleaned up temporary directory.")
+            except Exception as e:
+                print(f"⚠️  Warning: Could not remove temp dir {temp_dir}: {e}")
 
     except Exception as e:
         print(f"❌ Error during conversion: {e}")
