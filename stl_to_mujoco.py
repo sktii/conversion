@@ -1,6 +1,7 @@
 import numpy as np
 import trimesh
 from sklearn.cluster import KMeans
+from scipy.spatial.transform import Rotation as R
 import os
 import sys
 import shutil
@@ -158,6 +159,45 @@ def generate_raw_xml(stl_files, scale_factor=1.0):
     print(f"🚀 Generating raw_mesh.xml for {len(stl_files)} files...")
     scale_str = f"{scale_factor} {scale_factor} {scale_factor}"
 
+    # First Pass: Calculate Global Min Z after rotation
+    print("ℹ️  Calculating global bounds to auto-position on floor...")
+    global_min_z = np.inf
+
+    # Rotation matrix for 90 degrees around X
+    r = R.from_euler('x', 90, degrees=True)
+    rot_matrix = r.as_matrix() # 3x3
+
+    for stl_path in stl_files:
+        try:
+            mesh = trimesh.load(stl_path)
+            # Apply Scale
+            if scale_factor != 1.0:
+                mesh.apply_scale(scale_factor)
+
+            # Apply Rotation (Transform vertices)
+            # trimesh vertices are (N, 3)
+            # rotated_v = v @ R_T (since R is applied to column vectors usually, here we dot correctly)
+            # Actually easier: apply_transform
+
+            # Create 4x4 transform matrix
+            T = np.eye(4)
+            T[:3, :3] = rot_matrix
+            mesh.apply_transform(T)
+
+            min_z = mesh.bounds[0][2]
+            if min_z < global_min_z:
+                global_min_z = min_z
+        except Exception as e:
+            print(f"⚠️  Skipping bounds check for {os.path.basename(stl_path)}: {e}")
+
+    z_offset = 0.0
+    if global_min_z != np.inf:
+        z_offset = -global_min_z
+        print(f"   -> Global Min Z detected: {global_min_z:.4f}m. Applying Offset: +{z_offset:.4f}m")
+    else:
+        print("   -> Could not calculate bounds. Defaulting to 0 offset.")
+
+
     geoms_xml = ""
 
     abs_xml_dir = os.path.abspath(XML_DIR)
@@ -194,8 +234,11 @@ def generate_raw_xml(stl_files, scale_factor=1.0):
         if rel_path.startswith("../"):
             rel_path = rel_path[3:]
 
+        # Position Correction
+        pos_str = f"0 0 {z_offset:.4f}"
+
         geoms_xml += f'    <mesh name="{mesh_id}" file="{rel_path}" scale="{scale_str}"/>\n'
-        geoms_xml += f'    <geom name="geom_{mesh_id}" type="mesh" mesh="{mesh_id}" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>\n'
+        geoms_xml += f'    <geom name="geom_{mesh_id}" type="mesh" mesh="{mesh_id}" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0" pos="{pos_str}"/>\n'
 
     mesh_lines = [line for line in geoms_xml.splitlines() if '<mesh' in line]
     geom_lines = [line for line in geoms_xml.splitlines() if '<geom' in line]
