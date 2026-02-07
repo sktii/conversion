@@ -1,0 +1,66 @@
+<mujoco model="raw_mesh_view">
+  <compiler angle="radian"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
+    <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
+
+    <mesh name="part_0" file="../STL/JX01-20250322.STEP_parts/part_0.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_1" file="../STL/JX01-20250322.STEP_parts/part_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_10" file="../STL/JX01-20250322.STEP_parts/part_10.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_11" file="../STL/JX01-20250322.STEP_parts/part_11.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_12" file="../STL/JX01-20250322.STEP_parts/part_12.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_13" file="../STL/JX01-20250322.STEP_parts/part_13.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_14" file="../STL/JX01-20250322.STEP_parts/part_14.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_15" file="../STL/JX01-20250322.STEP_parts/part_15.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_16" file="../STL/JX01-20250322.STEP_parts/part_16.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_17" file="../STL/JX01-20250322.STEP_parts/part_17.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_18_hull" file="../STL/JX01-20250322.STEP_parts/part_18_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_18_hull" file="../STL/JX01-20250322.STEP_parts/part_18_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_19" file="../STL/JX01-20250322.STEP_parts/part_19.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_2" file="../STL/JX01-20250322.STEP_parts/part_2.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_20" file="../STL/JX01-20250322.STEP_parts/part_20.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_21" file="../STL/JX01-20250322.STEP_parts/part_21.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_22" file="../STL/JX01-20250322.STEP_parts/part_22.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_3" file="../STL/JX01-20250322.STEP_parts/part_3.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_4" file="../STL/JX01-20250322.STEP_parts/part_4.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_5" file="../STL/JX01-20250322.STEP_parts/part_5.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_6" file="../STL/JX01-20250322.STEP_parts/part_6.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_7" file="../STL/JX01-20250322.STEP_parts/part_7.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_8" file="../STL/JX01-20250322.STEP_parts/part_8.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="part_9" file="../STL/JX01-20250322.STEP_parts/part_9.stl" scale="0.001 0.001 0.001"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
+
+    <geom name="geom_part_0" type="mesh" mesh="part_0" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_1" type="mesh" mesh="part_1" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_10" type="mesh" mesh="part_10" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_11" type="mesh" mesh="part_11" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_12" type="mesh" mesh="part_12" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_13" type="mesh" mesh="part_13" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_14" type="mesh" mesh="part_14" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_15" type="mesh" mesh="part_15" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_16" type="mesh" mesh="part_16" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_17" type="mesh" mesh="part_17" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_18_hull" type="mesh" mesh="part_18_hull" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_18_hull" type="mesh" mesh="part_18_hull" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_19" type="mesh" mesh="part_19" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_2" type="mesh" mesh="part_2" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_20" type="mesh" mesh="part_20" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_21" type="mesh" mesh="part_21" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_22" type="mesh" mesh="part_22" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_3" type="mesh" mesh="part_3" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_4" type="mesh" mesh="part_4" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_5" type="mesh" mesh="part_5" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_6" type="mesh" mesh="part_6" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_7" type="mesh" mesh="part_7" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_8" type="mesh" mesh="part_8" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_part_9" type="mesh" mesh="part_9" rgba="0.8 0.8 0.8 1"/>
+  </worldbody>
+</mujoco>
