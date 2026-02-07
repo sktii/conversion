@@ -1,0 +1,53 @@
+<mujoco model="approximated_pillars">
+  <compiler angle="radian"/>
+
+  <include file="ur5e_fitted.xml"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
+    <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
+
+    <!-- Generated Pillars -->
+    <geom name="pillar_box_1" type="box" size="0.4300 0.2191 0.2521" pos="0.0988 0.0296 0.4521" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_2" type="box" size="0.3381 0.1995 0.2460" pos="0.1906 -0.1418 0.9540" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_3" type="box" size="0.3344 0.1699 0.2483" pos="0.1944 0.0788 0.9517" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_4" type="box" size="0.4300 0.1272 0.3202" pos="0.0988 -0.2141 0.6649" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_5" type="box" size="0.2245 0.1384 0.1009" pos="0.3043 -0.2029 0.3009" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_6" type="box" size="0.2076 0.1011 0.1290" pos="-0.1236 -0.2402 0.3290" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_7" type="box" size="0.1533 0.2044 0.1051" pos="-0.1780 -0.1368 1.0949" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_8" type="box" size="0.0944 0.0881 0.3717" pos="-0.2368 0.1606 0.8283" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_9" type="box" size="0.0200 0.0200 0.3258" pos="0.5088 0.2287 0.6617" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_10" type="box" size="0.01 0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_11" type="box" size="0.01 0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_12" type="box" size="0.01 0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_13" type="box" size="0.01 0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_14" type="box" size="0.01 0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_15" type="box" size="0.01 0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_box_16" type="box" size="0.01 0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_1" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_2" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_3" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_4" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_5" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_6" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_7" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_8" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_9" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_10" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_11" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_12" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_13" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_14" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_15" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+    <geom name="pillar_cyl_16" type="cylinder" size="0.01 0.01" pos="10 0 0" rgba="0.5 0.5 0.5 0" contype="1" conaffinity="1"/>
+
+  </worldbody>
+</mujoco>
