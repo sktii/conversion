@@ -19,6 +19,7 @@ MUJOCO_FACE_LIMIT = 20000
 # Output Paths (relative to script dir)
 XML_DIR = "XML"
 RAW_XML_FILE = os.path.join(XML_DIR, "raw_mesh.xml")
+RAW_XML2_FILE = os.path.join(XML_DIR, "raw_mesh2.xml")
 FITTED_XML_FILE = os.path.join(XML_DIR, "fitted_pillars.xml")
 PATCHED_UR5E_FILE = os.path.join(XML_DIR, "ur5e_fitted.xml")
 
@@ -149,19 +150,20 @@ def collect_stls(stl_dir):
 
     return collected_files
 
-def generate_raw_xml(stl_files, scale_factor=1.0):
+def generate_xmls(stl_files, scale_factor=1.0):
     ensure_dir(XML_DIR)
 
     if not stl_files:
         print("❌ No STL files to generate XML for.")
         return
 
-    print(f"🚀 Generating raw_mesh.xml for {len(stl_files)} files...")
+    print(f"🚀 Generating XMLs for {len(stl_files)} files...")
     scale_str = f"{scale_factor} {scale_factor} {scale_factor}"
 
-    # First Pass: Calculate Global Min Z after rotation
+    # First Pass: Calculate Global Min Z after rotation AND Locate plane.stl
     print("ℹ️  Calculating global bounds to auto-position on floor...")
     global_min_z = np.inf
+    plane_bounds = None # (min_x, min_y, min_z, max_x, max_y, max_z)
 
     # Rotation matrix for 90 degrees around X
     r = R.from_euler('x', 90, degrees=True)
@@ -175,11 +177,6 @@ def generate_raw_xml(stl_files, scale_factor=1.0):
                 mesh.apply_scale(scale_factor)
 
             # Apply Rotation (Transform vertices)
-            # trimesh vertices are (N, 3)
-            # rotated_v = v @ R_T (since R is applied to column vectors usually, here we dot correctly)
-            # Actually easier: apply_transform
-
-            # Create 4x4 transform matrix
             T = np.eye(4)
             T[:3, :3] = rot_matrix
             mesh.apply_transform(T)
@@ -187,6 +184,15 @@ def generate_raw_xml(stl_files, scale_factor=1.0):
             min_z = mesh.bounds[0][2]
             if min_z < global_min_z:
                 global_min_z = min_z
+
+            # Check for plane.stl
+            if "plane.stl" in os.path.basename(stl_path).lower():
+                print(f"   -> Found target plane mesh: {os.path.basename(stl_path)}")
+                plane_bounds = (
+                    mesh.bounds[0][0], mesh.bounds[0][1], mesh.bounds[0][2],
+                    mesh.bounds[1][0], mesh.bounds[1][1], mesh.bounds[1][2]
+                )
+
         except Exception as e:
             print(f"⚠️  Skipping bounds check for {os.path.basename(stl_path)}: {e}")
 
@@ -197,9 +203,50 @@ def generate_raw_xml(stl_files, scale_factor=1.0):
     else:
         print("   -> Could not calculate bounds. Defaulting to 0 offset.")
 
+    # Calculate Robot Position
+    robot_pos = np.array([0.0, 0.0, 0.0])
+    if plane_bounds:
+        # Calculate center of top surface
+        center_x = (plane_bounds[0] + plane_bounds[3]) / 2.0
+        center_y = (plane_bounds[1] + plane_bounds[4]) / 2.0
+        top_z = plane_bounds[5] # Top of the disk/plane
 
+        # Apply offset
+        final_z = top_z + z_offset
+        robot_pos = np.array([center_x, center_y, final_z])
+        print(f"🤖 Calculated Robot Position on Disk: {robot_pos}")
+    else:
+        print("⚠️  Warning: 'plane.stl' not found. Robot position defaults to origin.")
+
+    # Patch UR5e XML
+    try:
+        ur5e_source = "ur5e.xml"
+        if os.path.exists(ur5e_source):
+            tree = ET.parse(ur5e_source)
+            root = tree.getroot()
+            found = False
+            # Search for robot base body
+            # Assuming structure: worldbody -> body name="robot0:ur5e:base"
+            # ET.iter works recursively
+            for body in root.iter('body'):
+                if body.get('name') == "robot0:ur5e:base":
+                    pos_str_new = f'{robot_pos[0]:.4f} {robot_pos[1]:.4f} {robot_pos[2]:.4f}'
+                    body.set('pos', pos_str_new)
+                    found = True
+                    break
+
+            if not found:
+                print("⚠️  Warning: Could not find body 'robot0:ur5e:base' in ur5e.xml")
+
+            tree.write(PATCHED_UR5E_FILE)
+            print(f"✅ Created patched UR5e XML: {os.path.abspath(PATCHED_UR5E_FILE)}")
+        else:
+            print(f"❌ ur5e.xml not found at {os.path.abspath(ur5e_source)}")
+    except Exception as e:
+        print(f"⚠️  Failed to patch ur5e.xml: {e}")
+
+    # Generate XML Content
     geoms_xml = ""
-
     abs_xml_dir = os.path.abspath(XML_DIR)
 
     # Track used names to prevent duplicates
@@ -210,8 +257,6 @@ def generate_raw_xml(stl_files, scale_factor=1.0):
         final_part_path = hull_path if hull_path else stl_path
 
         # Get relative path for XML (Project Root Relative)
-        # We want "STL/filename.stl" not "../STL/filename.stl"
-        # Since we are running from project root, we can just use the relative path from there.
         try:
             rel_path = os.path.relpath(final_part_path, os.getcwd())
             rel_path = rel_path.replace("\\", "/")
@@ -246,7 +291,8 @@ def generate_raw_xml(stl_files, scale_factor=1.0):
     assets_block = "\n".join(mesh_lines)
     world_block = "\n".join(geom_lines)
 
-    xml_content = f"""<mujoco model="raw_mesh_view">
+    # 1. raw_mesh.xml (Viewer only)
+    xml_content_raw = f"""<mujoco model="raw_mesh_view">
   <compiler angle="radian"/>
 
   <option timestep="0.002" gravity="0 0 -9.81"/>
@@ -268,72 +314,39 @@ def generate_raw_xml(stl_files, scale_factor=1.0):
 </mujoco>
 """
     with open(RAW_XML_FILE, "w") as f:
-        f.write(xml_content)
+        f.write(xml_content_raw)
     print(f"✅ Generated Raw XML: {os.path.abspath(RAW_XML_FILE)}")
 
-def find_disk_center(mesh, stl_path, scale_factor=1.0):
-    stl_dir = os.path.dirname(stl_path)
-    base_name = os.path.splitext(os.path.basename(stl_path))[0]
-    parts_dir = os.path.join(stl_dir, f"{base_name}_parts")
+    # 2. raw_mesh2.xml (Viewer + Robot)
+    ur5e_ref = os.path.basename(PATCHED_UR5E_FILE)
 
-    best_candidate_center = None
-    max_z = -np.inf
+    xml_content_2 = f"""<mujoco model="raw_mesh_view_with_robot">
+  <compiler angle="radian"/>
 
-    if os.path.exists(parts_dir):
-        parts = glob.glob(os.path.join(parts_dir, "*.stl"))
-        for part in parts:
-            try:
-                part_mesh = trimesh.load(part)
-                if scale_factor != 1.0: part_mesh.apply_scale(scale_factor)
-                z_max = part_mesh.bounds[1][2]
-                center = part_mesh.centroid
-                if z_max > max_z:
-                    max_z = z_max
-                    best_candidate_center = center
-            except: pass
+  <include file="{ur5e_ref}"/>
 
-        if best_candidate_center is not None:
-             return best_candidate_center
+  <option timestep="0.002" gravity="0 0 -9.81"/>
 
-    if mesh:
-        points, _ = trimesh.sample.sample_surface(mesh, 2000)
-        z_coords = points[:, 2]
-        top_percentile_z = np.percentile(z_coords, 90)
-        top_points = points[z_coords > top_percentile_z]
-        if len(top_points) == 0: return np.mean(points, axis=0)
-        return np.mean(top_points, axis=0)
-    return np.array([0,0,0])
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
+    <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
 
-def generate_fitted_xml(stl_path, scale_factor=1.0):
-    # LEGACY / UNUSED in this version
-    ensure_dir(XML_DIR)
-    # print(f"🚀 Starting Pillar Generation")
+{assets_block}
+  </asset>
 
-    mesh = None
-    points = None
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
 
-    if os.path.exists(stl_path):
-        try:
-            ensure_binary_stl(stl_path)
-            mesh = trimesh.load(stl_path)
-            if scale_factor != 1.0:
-                mesh.apply_scale(scale_factor)
-            points, _ = trimesh.sample.sample_surface(mesh, SAMPLE_COUNT)
-        except Exception:
-            pass
+{world_block}
+  </worldbody>
+</mujoco>
+"""
+    with open(RAW_XML2_FILE, "w") as f:
+        f.write(xml_content_2)
+    print(f"✅ Generated Raw XML 2 (with Robot): {os.path.abspath(RAW_XML2_FILE)}")
 
-    if points is None:
-        return
-
-    robot_pos = find_disk_center(mesh, stl_path, scale_factor)
-
-    kmeans = KMeans(n_clusters=TOTAL_CLUSTERS, n_init=10, random_state=42)
-    kmeans.fit(points)
-    labels = kmeans.labels_
-
-    # ... (Truncating this logic as it is unused, but keeping the function stub valid)
-    # To be safe, I'll just return here since we don't use it.
-    return
 
 def main():
     stl_dir = "STL"
@@ -371,9 +384,9 @@ def main():
     except Exception as e:
         print(f"⚠️  Could not check scale: {e}")
 
-    generate_raw_xml(collected_stls, scale_factor)
+    generate_xmls(collected_stls, scale_factor)
 
-    print("ℹ️  Skipped fitted_pillars.xml generation (focusing on raw_mesh.xml).")
+    print("ℹ️  Skipped fitted_pillars.xml generation (focusing on raw_mesh.xml/raw_mesh2.xml).")
 
 if __name__ == "__main__":
     main()

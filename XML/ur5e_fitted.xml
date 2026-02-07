@@ -103,7 +103,7 @@
   </asset>
 
   <worldbody>
-    <body name="robot0:ur5e:base" pos="-0.0722 -0.0424 1.1977" childclass="ur5e">
+    <body name="robot0:ur5e:base" pos="0.1130 -0.7263 0.7900" childclass="ur5e">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
       <geom mesh="ur5e:base_0" material="ur5e:black" class="ur5e:visual" />
       <geom mesh="ur5e:base_1" material="ur5e:jointgray" class="ur5e:visual" />
