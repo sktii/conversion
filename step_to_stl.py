@@ -43,7 +43,6 @@ def ensure_binary_stl(filepath):
             mesh.export(filepath, file_type='stl') # Defaults to binary
             print(f"✅ Converted to Binary STL.")
         else:
-            # Assume binary (or valid enough header)
             pass
 
     except Exception as e:
@@ -51,7 +50,10 @@ def ensure_binary_stl(filepath):
 
 def convert_step_to_stl(input_filename=None):
     """
-    Converts a STEP file to STL with fallback logic for complex models.
+    Converts a STEP file to STL.
+    Outputs:
+    1. Individual parts in STL/{basename}_parts/
+    2. Merged mesh in STL/{basename}.stl
     """
     # 1. Setup Input Path
     if input_filename:
@@ -84,9 +86,17 @@ def convert_step_to_stl(input_filename=None):
 
     file_name = os.path.basename(input_path)
     base_name = os.path.splitext(file_name)[0]
-    output_path = os.path.join(OUTPUT_FOLDER, base_name + ".stl")
 
-    print(f"📂 Target Output: {output_path}")
+    # Merged Output
+    merged_output_path = os.path.join(OUTPUT_FOLDER, base_name + ".stl")
+
+    # Parts Output Directory
+    parts_dir = os.path.join(OUTPUT_FOLDER, f"{base_name}_parts")
+    if not os.path.exists(parts_dir):
+        os.makedirs(parts_dir)
+
+    print(f"📂 Merged Output: {merged_output_path}")
+    print(f"📂 Parts Output: {parts_dir}/")
 
     # 3. Import STEP
     try:
@@ -100,89 +110,55 @@ def convert_step_to_stl(input_filename=None):
         print(f"ℹ️  Found {len(solids)} solid(s) in the model.")
 
         if len(solids) == 0:
-             print("⚠️  Warning: No solids found! Attempting export anyway.")
+             print("⚠️  Warning: No solids found!")
+             return None
 
-        # --- ATTEMPT 1: Direct Export ---
-        print("⏳ Attempting direct export...")
-        try:
-            cq.exporters.export(
-                model,
-                output_path,
-                exportType="STL",
-                tolerance=TOLERANCE,
-                angularTolerance=ANGULAR_TOLERANCE
-            )
-            # Verify Binary
-            ensure_binary_stl(output_path)
-
-        except Exception as e:
-            print(f"⚠️  Direct export raised exception: {e}")
-
-        # Check if successful
-        if verify_file(output_path):
-            print("✅ Direct conversion Successful!")
-            return output_path
-
-        # --- ATTEMPT 2: Fallback - Individual Solids ---
-        print("⚠️  Direct export failed (file not created). Switching to Robust Mode (Individual Solids)...")
-        if len(solids) == 0:
-            print("❌ No solids to process in fallback mode.")
-            return None
-
+        # --- Process Solids ---
         meshes = []
-        # Use system temp directory to avoid permission issues
-        temp_dir = tempfile.mkdtemp(prefix="cad_conversion_")
-        print(f"ℹ️  Using temporary directory: {temp_dir}")
-
         success_count = 0
 
-        try:
-            for i, solid in enumerate(solids):
-                part_file = os.path.join(temp_dir, f"part_{i}.stl")
-                try:
-                    # FIX: Use newObject([solid]) to ensure it's in the stack
-                    wp = cq.Workplane("XY").newObject([solid])
-
-                    cq.exporters.export(
-                        wp,
-                        part_file,
-                        exportType="STL",
-                        tolerance=TOLERANCE,
-                        angularTolerance=ANGULAR_TOLERANCE
-                    )
-
-                    if os.path.exists(part_file) and os.path.getsize(part_file) > 0:
-                        # Load back with trimesh
-                        m = trimesh.load(part_file)
-                        meshes.append(m)
-                        success_count += 1
-                        print(f"   ✅ Processed solid {i+1}/{len(solids)}", end="\r")
-                    else:
-                        print(f"   ⚠️  Failed to export solid {i+1} (empty file)")
-                except Exception as e:
-                    print(f"   ⚠️  Error processing solid {i+1}: {e}")
-
-            print(f"\nℹ️  Successfully processed {success_count}/{len(solids)} parts.")
-
-            if not meshes:
-                print("❌ No parts could be converted.")
-                return None
-
-            # Concatenate
-            print("⏳ Merging meshes...")
-            combined_mesh = trimesh.util.concatenate(meshes)
-
-            print(f"⏳ Saving combined mesh to {output_path}...")
-            # Trimesh exports binary by default
-            combined_mesh.export(output_path)
-
-        finally:
-            # Clean up temp
+        for i, solid in enumerate(solids):
+            part_file = os.path.join(parts_dir, f"part_{i}.stl")
             try:
-                shutil.rmtree(temp_dir)
-                print(f"ℹ️  Cleaned up temporary directory.")
+                # Wrap solid in Workplane
+                wp = cq.Workplane("XY").newObject([solid])
+
+                # Export Individual Part
+                cq.exporters.export(
+                    wp,
+                    part_file,
+                    exportType="STL",
+                    tolerance=TOLERANCE,
+                    angularTolerance=ANGULAR_TOLERANCE
+                )
+
+                # Ensure Binary
+                ensure_binary_stl(part_file)
+
+                if os.path.exists(part_file) and os.path.getsize(part_file) > 0:
+                    # Load back for merging
+                    m = trimesh.load(part_file)
+                    meshes.append(m)
+                    success_count += 1
+                    print(f"   ✅ Processed solid {i+1}/{len(solids)} -> {os.path.basename(part_file)}", end="\r")
+                else:
+                    print(f"   ⚠️  Failed to export solid {i+1} (empty file)")
             except Exception as e:
-                print(f"⚠️  Warning: Could not remove temp dir {temp_dir}: {e}")
+                print(f"   ⚠️  Error processing solid {i+1}: {e}")
+
+        print(f"\nℹ️  Successfully processed {success_count}/{len(solids)} parts.")
+
+        if not meshes:
+            print("❌ No parts could be converted.")
+            return None
+
+        # Concatenate for Merged File
+        print("⏳ Merging meshes for pillar calculation...")
+        combined_mesh = trimesh.util.concatenate(meshes)
+
+        print(f"⏳ Saving combined mesh to {merged_output_path}...")
+        combined_mesh.export(merged_output_path) # Trimesh default is binary
+        ensure_binary_stl(merged_output_path) # Double check
 
     except Exception as e:
         print(f"❌ Error during conversion: {e}")
@@ -191,11 +167,11 @@ def convert_step_to_stl(input_filename=None):
         return None
 
     # Final Verification
-    if verify_file(output_path):
-        print("✅ Robust Conversion Successful!")
-        return output_path
+    if verify_file(merged_output_path):
+        print("✅ Conversion Successful!")
+        return merged_output_path
     else:
-        print("❌ Critical Error: All export attempts failed.")
+        print("❌ Critical Error: Export failed.")
         return None
 
 def verify_file(path):

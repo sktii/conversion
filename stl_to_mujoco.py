@@ -26,35 +26,23 @@ def ensure_dir(d):
         os.makedirs(d)
 
 def ensure_binary_stl(filepath):
-    """
-    Checks if the STL is binary and converts if necessary.
-    Also attempts mesh simplification if faces > limit.
-    Returns: (is_valid_for_mujoco, simplified_filepath_if_different)
-    """
     try:
         needs_save = False
         reason = ""
 
-        # 1. Check Header (ASCII vs Binary)
         with open(filepath, 'rb') as f:
             header = f.read(5)
         if header.startswith(b'solid'):
             needs_save = True
             reason = "ASCII format detected"
 
-        # 2. Check Face Count (Load mesh)
         mesh = trimesh.load(filepath)
-        face_count = len(mesh.faces)
 
-        hull_path = None
-
-        if face_count > MUJOCO_FACE_LIMIT:
-            print(f"⚠️  High face count ({face_count}). Attempting simplification...")
-            simplification_success = False
+        if len(mesh.faces) > MUJOCO_FACE_LIMIT:
+            print(f"⚠️  High face count ({len(mesh.faces)}). Attempting simplification...")
             try:
                 if hasattr(mesh, 'simplify_quadric_decimation'):
                     mesh = mesh.simplify_quadric_decimation(MUJOCO_FACE_LIMIT)
-                    simplification_success = True
                     needs_save = True
                     reason += f" & Simplified ({len(mesh.faces)} faces)"
                 else:
@@ -62,49 +50,59 @@ def ensure_binary_stl(filepath):
             except Exception as e:
                 print(f"   (Simplification failed: {e}, skipping)")
 
-            # If still too big, generate Convex Hull as fallback for visual
-            if len(mesh.faces) > MUJOCO_FACE_LIMIT:
-                print(f"⚠️  Mesh still too large for MuJoCo ({len(mesh.faces)} > {MUJOCO_FACE_LIMIT}).")
-                print("   -> Generating Convex Hull for visualization to prevent crash.")
-                hull = mesh.convex_hull
-                base, ext = os.path.splitext(filepath)
-                hull_path = f"{base}_hull{ext}"
-                hull.export(hull_path)
-                print(f"✅ Generated Hull: {hull_path}")
-                # We return the hull path so raw_mesh.xml uses it
-                # But we DON'T overwrite the original with the hull (keep geometry for fitting)
-
-                # However, we still need to ensure the original is binary if it was ASCII
-                if needs_save:
-                    print(f"ℹ️  Converting original to Binary (still high poly)...")
-                    mesh.export(filepath, file_type='stl')
-
-                return False, hull_path
-
         if needs_save:
             print(f"ℹ️  Optimizing STL ({reason})...")
             mesh.export(filepath, file_type='stl')
             print(f"✅ Saved optimized Binary STL: {filepath}")
         else:
-            print(f"✅ STL is valid (Binary, {face_count} faces).")
-
-        return True, None
+            print(f"✅ STL is valid (Binary, {len(mesh.faces)} faces).")
 
     except Exception as e:
         print(f"⚠️  Error verifying/converting STL format: {e}")
-        return False, None
 
-def generate_raw_xml(stl_path, scale_factor=1.0, override_stl_path=None):
+def generate_raw_xml(stl_path, scale_factor=1.0):
     ensure_dir(XML_DIR)
 
-    # Use override path (e.g. hull) if provided
-    target_path = override_stl_path if override_stl_path else stl_path
-
-    stl_filename = os.path.basename(target_path)
     scale_str = f"{scale_factor} {scale_factor} {scale_factor}"
 
-    # Path relative to project root
-    relative_stl_path = f"STL/{stl_filename}"
+    # Check for parts directory
+    stl_dir = os.path.dirname(stl_path)
+    stl_filename = os.path.basename(stl_path)
+    base_name = os.path.splitext(stl_filename)[0]
+    parts_dir = os.path.join(stl_dir, f"{base_name}_parts")
+
+    geoms_xml = ""
+
+    if os.path.exists(parts_dir):
+        print(f"ℹ️  Found parts directory: {parts_dir}. Adding individual parts to raw_mesh.xml.")
+        parts = sorted(glob.glob(os.path.join(parts_dir, "*.stl")))
+        if not parts:
+            print("⚠️  Parts directory empty. Falling back to merged mesh.")
+            parts = [stl_path]
+
+        for part_path in parts:
+            part_name = os.path.basename(part_path)
+            # Make sure part is binary
+            ensure_binary_stl(part_path)
+
+            # Relative path from project root
+            rel_path = f"STL/{base_name}_parts/{part_name}"
+
+            # Use unique mesh name
+            mesh_id = os.path.splitext(part_name)[0]
+
+            geoms_xml += f"""
+    <mesh name="{mesh_id}" file="{rel_path}" scale="{scale_str}"/>
+    <geom name="geom_{mesh_id}" type="mesh" mesh="{mesh_id}" rgba="0.8 0.8 0.8 1"/>
+"""
+    else:
+        # Fallback to single merged mesh
+        print(f"ℹ️  No parts directory found. Using merged mesh.")
+        rel_path = f"STL/{stl_filename}"
+        geoms_xml += f"""
+    <mesh name="target_mesh" file="{rel_path}" scale="{scale_str}"/>
+    <geom name="imported_part" type="mesh" mesh="target_mesh" rgba="0.8 0.8 0.8 1"/>
+"""
 
     xml_content = f"""<mujoco model="raw_mesh_view">
   <compiler angle="radian"/>
@@ -116,17 +114,60 @@ def generate_raw_xml(stl_path, scale_factor=1.0, override_stl_path=None):
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
 
-    <mesh name="target_mesh" file="{relative_stl_path}" scale="{scale_str}"/>
+    {geoms_xml.split('<geom')[0].replace('<geom', '') if '<mesh' in geoms_xml else ''}
   </asset>
 
   <worldbody>
     <light pos="0 0 3" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
 
-    <geom name="imported_part" type="mesh" mesh="target_mesh" rgba="0.8 0.8 0.8 1"/>
+    {''.join([line for line in geoms_xml.splitlines() if '<geom' in line])}
   </worldbody>
 </mujoco>
 """
+    # Fix the XML generation logic above - it's a bit messy splitting strings.
+    # Let's rewrite it cleaner.
+
+    assets_block = ""
+    world_block = ""
+
+    if os.path.exists(parts_dir) and glob.glob(os.path.join(parts_dir, "*.stl")):
+        parts = sorted(glob.glob(os.path.join(parts_dir, "*.stl")))
+        for part_path in parts:
+            part_name = os.path.basename(part_path)
+            ensure_binary_stl(part_path)
+            rel_path = f"STL/{base_name}_parts/{part_name}"
+            mesh_id = os.path.splitext(part_name)[0]
+
+            assets_block += f'    <mesh name="{mesh_id}" file="{rel_path}" scale="{scale_str}"/>\n'
+            world_block += f'    <geom name="geom_{mesh_id}" type="mesh" mesh="{mesh_id}" rgba="0.8 0.8 0.8 1"/>\n'
+    else:
+        rel_path = f"STL/{stl_filename}"
+        assets_block = f'    <mesh name="target_mesh" file="{rel_path}" scale="{scale_str}"/>\n'
+        world_block = f'    <geom name="imported_part" type="mesh" mesh="target_mesh" rgba="0.8 0.8 0.8 1"/>\n'
+
+    xml_content = f"""<mujoco model="raw_mesh_view">
+  <compiler angle="radian"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
+    <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
+
+{assets_block}
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
+
+{world_block}
+  </worldbody>
+</mujoco>
+"""
+
     with open(RAW_XML_FILE, "w") as f:
         f.write(xml_content)
     print(f"✅ Generated Raw XML: {os.path.abspath(RAW_XML_FILE)}")
@@ -147,13 +188,14 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
     ensure_dir(XML_DIR)
 
     print(f"🚀 Starting Pillar Generation")
+    print(f"📂 Input STL: {stl_path}")
 
     if not os.path.exists(stl_path):
         print(f"❌ Error: STL file not found: {stl_path}")
         return
 
     try:
-        # Load Mesh
+        ensure_binary_stl(stl_path)
         mesh = trimesh.load(stl_path)
 
         if scale_factor != 1.0:
@@ -231,7 +273,6 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         try:
             tree = ET.parse("ur5e.xml")
             root = tree.getroot()
-
             found = False
             for body in root.iter('body'):
                 if body.get('name') == "robot0:ur5e:base":
@@ -344,13 +385,9 @@ def main():
         print("Usage: python stl_to_mujoco.py [stl_path]")
         return
 
-    # Check and Optimize STL first
-    is_valid, hull_path = ensure_binary_stl(stl_path)
-
     # Check Scale
     scale_factor = 1.0
     try:
-        # Load mesh (reload safe because ensured binary)
         mesh = trimesh.load(stl_path)
         bounds = mesh.bounds
         max_dim = np.max(bounds[1] - bounds[0])
@@ -360,10 +397,7 @@ def main():
     except Exception as e:
         print(f"⚠️  Could not check scale: {e}")
 
-    # Pass hull_path (if generated) to raw_xml to avoid high-poly crash
-    generate_raw_xml(stl_path, scale_factor, override_stl_path=hull_path)
-
-    # Fitted XML always uses original (or simplified) geometry for calculation
+    generate_raw_xml(stl_path, scale_factor)
     generate_fitted_xml(stl_path, scale_factor)
 
 if __name__ == "__main__":
