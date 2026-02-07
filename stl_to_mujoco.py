@@ -282,7 +282,7 @@ def generate_xmls(stl_files, scale_factor=1.0):
 
     # Generate XML Content
     geoms_xml = ""
-    collision_geoms_xml = "" # Accumulate collision geoms here
+    collected_boxes = [] # List of dicts: {'vol': float, 'xml': str}
 
     abs_xml_dir = os.path.abspath(XML_DIR)
 
@@ -323,9 +323,8 @@ def generate_xmls(stl_files, scale_factor=1.0):
         geoms_xml += f'    <mesh name="{mesh_id}" file="{rel_path}" scale="{scale_str}"/>\n'
         geoms_xml += f'    <geom name="geom_{mesh_id}" type="mesh" mesh="{mesh_id}" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0" pos="{pos_str}" group="1" contype="0" conaffinity="0"/>\n'
 
-        # Collision Box (1 Box per Part)
+        # Collision Box Calculation
         try:
-            # Load mesh to get oriented bounding box
             m = trimesh.load(stl_path)
             if scale_factor != 1.0: m.apply_scale(scale_factor)
 
@@ -333,7 +332,6 @@ def generate_xmls(stl_files, scale_factor=1.0):
             T = np.eye(4); T[:3,:3] = rot_matrix
             m.apply_transform(T)
 
-            # Get AABB in world coords (centered at origin + offset)
             bounds = m.bounds
             center = (bounds[0] + bounds[1]) / 2.0
             dims = (bounds[1] - bounds[0]) / 2.0
@@ -341,19 +339,37 @@ def generate_xmls(stl_files, scale_factor=1.0):
             # Apply global Z offset to center
             center[2] += z_offset
 
-            # Box XML
-            # Use semi-transparent red for visibility (or group="3" for invisible collision)
-            # User requested Option A: Visual Mesh + Invisible Collision Boxes
-            # Often useful to have them visible but transparent for debugging, or strictly invisible.
-            # I will use group="3" which is standard for collision-only in MuJoCo, and maybe a faint rgba just in case group is rendered.
-            collision_geoms_xml += f'    <geom name="col_{mesh_id}" type="box" pos="{center[0]:.4f} {center[1]:.4f} {center[2]:.4f}" size="{dims[0]:.4f} {dims[1]:.4f} {dims[2]:.4f}" rgba="1 0 0 0.5" group="3"/>\n'
+            # Calculate volume for sorting (prioritize big structural parts)
+            vol = dims[0] * dims[1] * dims[2] * 8.0 # Full volume
+
+            collected_boxes.append({
+                'vol': vol,
+                'pos': center,
+                'size': dims
+            })
 
         except Exception as e:
             print(f"⚠️  Could not generate collision box for {mesh_id}: {e}")
 
+    # Process Boxes: Sort, Limit to 32, Rename, Fill
+    collected_boxes.sort(key=lambda x: x['vol'], reverse=True)
+
+    final_collision_xml = ""
+    target_count = 32
+
+    for i in range(target_count):
+        box_name = f"box_{i+1}"
+        if i < len(collected_boxes):
+            # Real box
+            b = collected_boxes[i]
+            final_collision_xml += f'    <geom name="{box_name}" type="box" pos="{b["pos"][0]:.4f} {b["pos"][1]:.4f} {b["pos"][2]:.4f}" size="{b["size"][0]:.4f} {b["size"][1]:.4f} {b["size"][2]:.4f}" rgba="1 0 0 0.5" group="3"/>\n'
+        else:
+            # Dummy box
+            final_collision_xml += f'    <geom name="{box_name}" type="box" pos="10 0 0" size="0.01 0.01 0.01" rgba="0.5 0.5 0.5 0" group="3"/>\n'
+
     mesh_lines = [line for line in geoms_xml.splitlines() if '<mesh' in line]
     geom_lines = [line for line in geoms_xml.splitlines() if '<geom' in line]
-    collision_lines = [line for line in collision_geoms_xml.splitlines()]
+    collision_lines = [line for line in final_collision_xml.splitlines()]
 
     assets_block = "\n".join(mesh_lines)
     world_block = "\n".join(geom_lines)
