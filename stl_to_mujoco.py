@@ -166,18 +166,23 @@ def generate_raw_xml(stl_files, scale_factor=1.0):
         is_valid, hull_path = ensure_binary_stl(stl_path)
         final_part_path = hull_path if hull_path else stl_path
 
-        # Get relative path for XML
-        abs_part_path = os.path.abspath(final_part_path)
+        # Get relative path for XML (Project Root Relative)
+        # We want "STL/filename.stl" not "../STL/filename.stl"
+        # Since we are running from project root, we can just use the relative path from there.
         try:
-            rel_path = os.path.relpath(abs_part_path, abs_xml_dir)
+            rel_path = os.path.relpath(final_part_path, os.getcwd())
             rel_path = rel_path.replace("\\", "/")
         except ValueError:
-            rel_path = abs_part_path.replace("\\", "/")
+             rel_path = final_part_path.replace("\\", "/")
 
         final_part_name = os.path.basename(final_part_path)
         mesh_id = os.path.splitext(final_part_name)[0].replace(" ", "_").replace(".", "_")
 
         # Apply Default Rotation: 90 degrees around X-axis (1.5707963 rad)
+        # Ensure path does not start with ../
+        if rel_path.startswith("../"):
+            rel_path = rel_path[3:]
+
         geoms_xml += f'    <mesh name="{mesh_id}" file="{rel_path}" scale="{scale_str}"/>\n'
         geoms_xml += f'    <geom name="geom_{mesh_id}" type="mesh" mesh="{mesh_id}" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>\n'
 
