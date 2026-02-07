@@ -1,0 +1,491 @@
+import numpy as np
+import trimesh
+from sklearn.cluster import KMeans
+import os
+import sys
+import shutil
+import glob
+import xml.etree.ElementTree as ET
+
+# Parameters
+NUM_CYLINDERS = 16
+NUM_BOXES = 16
+TOTAL_CLUSTERS = NUM_CYLINDERS + NUM_BOXES
+SAMPLE_COUNT = 5000
+SCALE_THRESHOLD = 10.0 # If > 10m, assume millimeters
+MUJOCO_FACE_LIMIT = 20000
+
+# Output Paths (relative to script dir)
+XML_DIR = "XML"
+RAW_XML_FILE = os.path.join(XML_DIR, "raw_mesh.xml")
+FITTED_XML_FILE = os.path.join(XML_DIR, "fitted_pillars.xml")
+PATCHED_UR5E_FILE = os.path.join(XML_DIR, "ur5e_fitted.xml")
+
+def ensure_dir(d):
+    if not os.path.exists(d):
+        os.makedirs(d)
+
+def ensure_binary_stl(filepath):
+    """
+    Checks if the STL is binary and converts if necessary.
+    Also attempts mesh simplification if faces > limit.
+    """
+    if not os.path.exists(filepath):
+        return False, None
+
+    try:
+        needs_save = False
+        reason = ""
+
+        # 1. Check Header (ASCII vs Binary)
+        with open(filepath, 'rb') as f:
+            header = f.read(5)
+        if header.startswith(b'solid'):
+            needs_save = True
+            reason = "ASCII format detected"
+
+        # 2. Check Face Count (Load mesh)
+        mesh = trimesh.load(filepath)
+        face_count = len(mesh.faces)
+
+        if face_count > MUJOCO_FACE_LIMIT:
+            print(f"⚠️  High face count ({face_count}) in {os.path.basename(filepath)}. Attempting simplification...")
+            simplification_success = False
+
+            # Try simplification methods
+            try:
+                if hasattr(mesh, 'simplify_quadric_decimation'):
+                    try:
+                        mesh = mesh.simplify_quadric_decimation(MUJOCO_FACE_LIMIT)
+                        simplification_success = True
+                        needs_save = True
+                        reason += f" & Simplified (Count Method) -> {len(mesh.faces)} faces"
+                    except:
+                        ratio = 1.0 - (MUJOCO_FACE_LIMIT / face_count)
+                        if ratio < 0: ratio = 0.0
+                        if ratio > 1: ratio = 0.99
+                        try:
+                            mesh = mesh.simplify_quadric_decimation(ratio)
+                            simplification_success = True
+                            needs_save = True
+                            reason += f" & Simplified (Ratio Method {ratio:.2f}) -> {len(mesh.faces)} faces"
+                        except:
+                            pass
+            except:
+                pass
+
+            # Fallback: Convex Hull if still too big
+            if len(mesh.faces) > MUJOCO_FACE_LIMIT:
+                print(f"⚠️  Mesh still too large ({len(mesh.faces)}). Generating Hull for safety.")
+                hull = mesh.convex_hull
+                base, ext = os.path.splitext(filepath)
+                hull_path = f"{base}_hull{ext}"
+                hull.export(hull_path)
+                print(f"✅ Generated Hull: {hull_path}")
+                return False, hull_path # Return hull path for raw_mesh.xml
+
+        if needs_save:
+            print(f"ℹ️  Optimizing STL ({reason})...")
+            mesh.export(filepath, file_type='stl')
+            print(f"✅ Saved optimized Binary STL: {filepath}")
+
+        return True, None
+
+    except Exception as e:
+        print(f"⚠️  Error verifying/converting STL format: {e}")
+        return False, None
+
+def generate_raw_xml(stl_path, scale_factor=1.0, override_stl_path=None):
+    ensure_dir(XML_DIR)
+
+    stl_filename = os.path.basename(stl_path)
+    scale_str = f"{scale_factor} {scale_factor} {scale_factor}"
+
+    geoms_xml = ""
+
+    stl_dir = os.path.dirname(stl_path)
+    base_name = os.path.splitext(os.path.basename(stl_path))[0]
+    parts_dir = os.path.join(stl_dir, f"{base_name}_parts")
+
+    use_parts = False
+
+    # Priority 1: Check parts directory
+    if os.path.exists(parts_dir):
+        parts = sorted(glob.glob(os.path.join(parts_dir, "*.stl")))
+        if parts:
+            use_parts = True
+            print(f"ℹ️  Found parts directory: {parts_dir}. Adding individual parts to raw_mesh.xml.")
+            for part_path in parts:
+                part_name = os.path.basename(part_path)
+                is_valid, part_hull = ensure_binary_stl(part_path)
+                final_part_path = part_hull if part_hull else part_path
+                final_part_name = os.path.basename(final_part_path)
+
+                # Relative path logic: XML is in XML/, STL is in STL/ -> ../STL/
+                rel_path = f"../STL/{base_name}_parts/{final_part_name}"
+                mesh_id = os.path.splitext(final_part_name)[0].replace(" ", "_").replace(".", "_")
+
+                geoms_xml += f'    <mesh name="{mesh_id}" file="{rel_path}" scale="{scale_str}"/>\n'
+                geoms_xml += f'    <geom name="geom_{mesh_id}" type="mesh" mesh="{mesh_id}" rgba="0.8 0.8 0.8 1"/>\n'
+
+    # Priority 2: Override (Hull)
+    if not use_parts and override_stl_path and os.path.exists(override_stl_path):
+        final_name = os.path.basename(override_stl_path)
+        rel_path = f"../STL/{final_name}"
+        geoms_xml = f'    <mesh name="target_mesh" file="{rel_path}" scale="{scale_str}"/>\n'
+        geoms_xml += f'    <geom name="imported_part" type="mesh" mesh="target_mesh" rgba="0.8 0.8 0.8 1"/>\n'
+
+    # Priority 3: Original Merged Mesh
+    elif not use_parts:
+        if os.path.exists(stl_path):
+            rel_path = f"../STL/{stl_filename}"
+            geoms_xml = f'    <mesh name="target_mesh" file="{rel_path}" scale="{scale_str}"/>\n'
+            geoms_xml += f'    <geom name="imported_part" type="mesh" mesh="target_mesh" rgba="0.8 0.8 0.8 1"/>\n'
+        else:
+            print("⚠️  Warning: No valid mesh found for visualization (merged missing and no parts).")
+            geoms_xml = '    <!-- No mesh found -->'
+
+    mesh_lines = [line for line in geoms_xml.splitlines() if '<mesh' in line]
+    geom_lines = [line for line in geoms_xml.splitlines() if '<geom' in line]
+
+    assets_block = "\n".join(mesh_lines)
+    world_block = "\n".join(geom_lines)
+
+    xml_content = f"""<mujoco model="raw_mesh_view">
+  <compiler angle="radian"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
+    <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
+
+{assets_block}
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
+
+{world_block}
+  </worldbody>
+</mujoco>
+"""
+    with open(RAW_XML_FILE, "w") as f:
+        f.write(xml_content)
+    print(f"✅ Generated Raw XML: {os.path.abspath(RAW_XML_FILE)}")
+
+
+def find_disk_center(mesh, stl_path, scale_factor=1.0):
+    stl_dir = os.path.dirname(stl_path)
+    base_name = os.path.splitext(os.path.basename(stl_path))[0]
+    parts_dir = os.path.join(stl_dir, f"{base_name}_parts")
+
+    best_candidate_center = None
+    max_z = -np.inf
+
+    if os.path.exists(parts_dir):
+        print(f"ℹ️  Searching for disk/highest part in: {parts_dir}...")
+        parts = glob.glob(os.path.join(parts_dir, "*.stl"))
+        for part in parts:
+            try:
+                part_mesh = trimesh.load(part)
+                if scale_factor != 1.0: part_mesh.apply_scale(scale_factor)
+                z_max = part_mesh.bounds[1][2]
+                center = part_mesh.centroid
+                if z_max > max_z:
+                    max_z = z_max
+                    best_candidate_center = center
+            except: pass
+
+        if best_candidate_center is not None:
+             print(f"   -> Found highest part at Z={max_z:.4f}, Center={best_candidate_center}")
+             return best_candidate_center
+
+    if mesh:
+        print("ℹ️  Parts not found/usable, falling back to surface sampling.")
+        points, _ = trimesh.sample.sample_surface(mesh, 2000)
+        z_coords = points[:, 2]
+        top_percentile_z = np.percentile(z_coords, 90)
+        top_points = points[z_coords > top_percentile_z]
+        if len(top_points) == 0: return np.mean(points, axis=0)
+        return np.mean(top_points, axis=0)
+
+    print("❌ Error: Could not find disk center (No mesh and no parts).Defaulting to 0,0,0")
+    return np.array([0,0,0])
+
+
+def generate_fitted_xml(stl_path, scale_factor=1.0):
+    ensure_dir(XML_DIR)
+    print(f"🚀 Starting Pillar Generation")
+
+    # Logic: Try merged mesh, if fail, try parts.
+    mesh = None
+    points = None
+
+    if os.path.exists(stl_path):
+        try:
+            ensure_binary_stl(stl_path)
+            mesh = trimesh.load(stl_path)
+            if scale_factor != 1.0:
+                mesh.apply_scale(scale_factor)
+                print(f"   -> Applied scale factor {scale_factor} to merged mesh.")
+            points, _ = trimesh.sample.sample_surface(mesh, SAMPLE_COUNT)
+        except Exception as e:
+            print(f"⚠️  Failed to load merged mesh: {e}")
+
+    if points is None:
+        stl_dir = os.path.dirname(stl_path)
+        base_name = os.path.splitext(os.path.basename(stl_path))[0]
+        parts_dir = os.path.join(stl_dir, f"{base_name}_parts")
+
+        if os.path.exists(parts_dir):
+            print(f"ℹ️  Merged mesh unavailable. Sampling from parts in {parts_dir}...")
+            parts = glob.glob(os.path.join(parts_dir, "*.stl"))
+            all_points = []
+
+            # First pass: calculate total area
+            total_area = 0
+            loaded_parts = []
+            for part in parts:
+                try:
+                    m = trimesh.load(part)
+                    if scale_factor != 1.0: m.apply_scale(scale_factor)
+                    total_area += m.area
+                    loaded_parts.append(m)
+                except: pass
+
+            if total_area > 0:
+                for m in loaded_parts:
+                    count = int((m.area / total_area) * SAMPLE_COUNT)
+                    if count < 10: count = 10 # Minimum samples
+                    try:
+                        pts, _ = trimesh.sample.sample_surface(m, count)
+                        all_points.append(pts)
+                    except: pass
+
+                if all_points:
+                    points = np.vstack(all_points)
+                    print(f"   -> Sampled {len(points)} points from {len(loaded_parts)} parts.")
+
+    if points is None:
+        print("❌ Error: Could not generate points for pillar fitting (No valid mesh or parts).")
+        return
+
+    # Robot Placement
+    robot_pos = find_disk_center(mesh, stl_path, scale_factor)
+    print(f"🤖 Detected Robot Placement: {robot_pos}")
+
+    kmeans = KMeans(n_clusters=TOTAL_CLUSTERS, n_init=10, random_state=42)
+    kmeans.fit(points)
+    labels = kmeans.labels_
+
+    unique, counts = np.unique(labels, return_counts=True)
+    cluster_counts = dict(zip(unique, counts))
+
+    clusters = []
+    for i in range(TOTAL_CLUSTERS):
+        if i not in cluster_counts: continue
+        pts = points[labels == i]
+        min_p = np.min(pts, axis=0)
+        max_p = np.max(pts, axis=0)
+        center = (min_p + max_p) / 2.0
+        dims = max_p - min_p
+        clusters.append({
+            'id': i,
+            'center': center,
+            'min': min_p,
+            'max': max_p,
+            'dims': dims,
+            'count': cluster_counts[i],
+            'merged': False
+        })
+
+    final_pillars = []
+    while clusters:
+        clusters.sort(key=lambda x: x['count'], reverse=True)
+        current = clusters.pop(0)
+        c_min = current['min']
+        c_max = current['max']
+        i = 0
+        while i < len(clusters):
+            other = clusters[i]
+            o_min = other['min']
+            o_max = other['max']
+
+            tol = 0.05
+            overlap_x = (c_min[0] - tol <= o_max[0]) and (c_max[0] + tol >= o_min[0])
+            overlap_y = (c_min[1] - tol <= o_max[1]) and (c_max[1] + tol >= o_min[1])
+            overlap_z = (c_min[2] - tol <= o_max[2]) and (c_max[2] + tol >= o_min[2])
+
+            if overlap_x and overlap_y and overlap_z:
+                current['min'] = np.minimum(current['min'], other['min'])
+                current['max'] = np.maximum(current['max'], other['max'])
+                current['count'] += other['count']
+                clusters.pop(i)
+            else:
+                i += 1
+
+        dims = current['max'] - current['min']
+        center = (current['min'] + current['max']) / 2.0
+        dims = np.maximum(dims, 0.01)
+
+        final_pillars.append({
+            'center': center,
+            'dims': dims
+        })
+        if len(final_pillars) >= TOTAL_CLUSTERS:
+            break
+
+    print(f"✅ Merged into {len(final_pillars)} distinct pillars.")
+
+    # Patch UR5e XML
+    try:
+        tree = ET.parse("ur5e.xml")
+        root = tree.getroot()
+        found = False
+        for body in root.iter('body'):
+            if body.get('name') == "robot0:ur5e:base":
+                pos_str_new = f'{robot_pos[0]:.4f} {robot_pos[1]:.4f} {robot_pos[2]:.4f}'
+                body.set('pos', pos_str_new)
+                found = True
+                break
+
+        if not found:
+            print("⚠️  Warning: Could not find body 'robot0:ur5e:base' in ur5e.xml")
+        tree.write(PATCHED_UR5E_FILE)
+        print(f"✅ Created patched UR5e XML: {os.path.abspath(PATCHED_UR5E_FILE)}")
+    except Exception as e:
+        print(f"⚠️  Failed to patch ur5e.xml: {e}.")
+        if not os.path.exists(PATCHED_UR5E_FILE):
+                if os.path.exists("ur5e.xml"):
+                    shutil.copy("ur5e.xml", PATCHED_UR5E_FILE)
+
+    # Generate XML Strings
+    pillar_geoms = []
+    def make_geom(name, type_str, size, pos, rgba):
+        return f'    <geom name="{name}" type="{type_str}" size="{size}" pos="{pos}" rgba="{rgba}" contype="1" conaffinity="1"/>'
+
+    unused_pos = "10 0 0"
+    unused_size = "0.01 0.01 0.01"
+    unused_size_cyl = "0.01 0.01"
+    unused_rgba = "0.5 0.5 0.5 0"
+    used_rgba = "0.5 0.5 0.5 1"
+
+    for i in range(1, NUM_BOXES + 1):
+        if final_pillars:
+            p = final_pillars.pop(0)
+            c = p['center']
+            d = p['dims'] / 2.0
+            pos_str = f"{c[0]:.4f} {c[1]:.4f} {c[2]:.4f}"
+            size_str = f"{d[0]:.4f} {d[1]:.4f} {d[2]:.4f}"
+            pillar_geoms.append(make_geom(f"pillar_box_{i}", "box", size_str, pos_str, used_rgba))
+        else:
+            pillar_geoms.append(make_geom(f"pillar_box_{i}", "box", unused_size, unused_pos, unused_rgba))
+
+    for i in range(1, NUM_CYLINDERS + 1):
+        if final_pillars:
+            p = final_pillars.pop(0)
+            c = p['center']
+            d = p['dims'] / 2.0
+            radius = max(d[0], d[1])
+            height = d[2]
+            pos_str = f"{c[0]:.4f} {c[1]:.4f} {c[2]:.4f}"
+            size_str = f"{radius:.4f} {height:.4f}"
+            pillar_geoms.append(make_geom(f"pillar_cyl_{i}", "cylinder", size_str, pos_str, used_rgba))
+        else:
+            pillar_geoms.append(make_geom(f"pillar_cyl_{i}", "cylinder", unused_size_cyl, unused_pos, unused_rgba))
+
+    ur5e_ref = os.path.basename(PATCHED_UR5E_FILE)
+
+    xml_content = f"""<mujoco model="approximated_pillars">
+  <compiler angle="radian"/>
+
+  <include file="{ur5e_ref}"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
+    <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
+
+    <!-- Generated Pillars -->
+{chr(10).join(pillar_geoms)}
+
+  </worldbody>
+</mujoco>
+"""
+    with open(FITTED_XML_FILE, "w") as f:
+        f.write(xml_content)
+    print(f"✅ XML Generated Successfully: {os.path.abspath(FITTED_XML_FILE)}")
+
+def main():
+    stl_path = None
+    if len(sys.argv) > 1:
+        stl_path = sys.argv[1]
+    else:
+        stl_dir = "STL"
+        if os.path.exists(stl_dir):
+            files = glob.glob(os.path.join(stl_dir, "*.stl"))
+            if files:
+                files.sort(key=os.path.getmtime, reverse=True)
+                stl_path = files[0]
+                print(f"ℹ️  No input file provided. Using newest STL found: {stl_path}")
+            else:
+                # Check for parts directories
+                parts_dirs = glob.glob(os.path.join(stl_dir, "*_parts"))
+                if parts_dirs:
+                    parts_dirs.sort(key=os.path.getmtime, reverse=True)
+                    # Infer virtual STL name: STL/Name_parts -> STL/Name.stl
+                    base_part_dir = os.path.basename(parts_dirs[0])
+                    base_name = base_part_dir.replace("_parts", "")
+                    stl_path = os.path.join(stl_dir, f"{base_name}.stl")
+                    print(f"ℹ️  No STL file, but found parts directory: {parts_dirs[0]}. Using virtual path: {stl_path}")
+                else:
+                    print(f"❌ No STL files or parts found in {stl_dir}")
+                    return
+        else:
+            print(f"❌ STL directory not found: {stl_dir}")
+            return
+
+    # Check Scale
+    scale_factor = 1.0
+    hull_path = None
+    try:
+        if stl_path and os.path.exists(stl_path):
+            is_valid, hull_path = ensure_binary_stl(stl_path)
+            mesh = trimesh.load(stl_path)
+            bounds = mesh.bounds
+            max_dim = np.max(bounds[1] - bounds[0])
+            if max_dim > SCALE_THRESHOLD:
+                print(f"⚠️  Detected large dimensions ({max_dim:.2f}). Scaling by 0.001 (mm -> m).")
+                scale_factor = 0.001
+        else:
+            # Guess scale from parts
+            stl_dir = os.path.dirname(stl_path)
+            base_name = os.path.splitext(os.path.basename(stl_path))[0]
+            parts_dir = os.path.join(stl_dir, f"{base_name}_parts")
+            if os.path.exists(parts_dir):
+                parts = glob.glob(os.path.join(parts_dir, "*.stl"))
+                if parts:
+                     m = trimesh.load(parts[0])
+                     max_dim = np.max(m.bounds[1] - m.bounds[0])
+                     if max_dim > SCALE_THRESHOLD:
+                         print(f"⚠️  Detected large dimensions in parts ({max_dim:.2f}). Scaling by 0.001 (mm -> m).")
+                         scale_factor = 0.001
+
+    except Exception as e:
+        print(f"⚠️  Could not check scale: {e}")
+
+    generate_raw_xml(stl_path, scale_factor, override_stl_path=hull_path)
+    generate_fitted_xml(stl_path, scale_factor)
+
+if __name__ == "__main__":
+    main()
