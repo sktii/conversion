@@ -60,22 +60,11 @@ def ensure_binary_stl(filepath):
                         reason += f" & Simplified (Count Method) -> {len(mesh.faces)} faces"
                     except Exception as e_count:
                         # Strategy 2: Try passing ratio (Fast Simplification style)
-                        # Ratio should be 0.0 to 1.0 (Target / Current)
-                        # Wait, fast_simplification doc says "target_reduction" (0..1)
-                        # usually reduction = 1 - (target / current)
-                        # e.g. reduce by 0.9 (90%) to get 10% faces.
                         ratio = 1.0 - (MUJOCO_FACE_LIMIT / face_count)
                         if ratio < 0: ratio = 0.0
                         if ratio > 1: ratio = 0.99
 
                         try:
-                            # Note: trimesh wraps fast_simplification. exact arg might vary.
-                            # Some versions take 'percent' or 'ratio'.
-                            # But if the error was "target_reduction must be between 0 and 1",
-                            # it implies we passed a large integer (MUJOCO_FACE_LIMIT) to a float arg.
-
-                            # Let's try passing the float ratio directly to simplify_quadric_decimation
-                            # assuming the backend handles it.
                             mesh = mesh.simplify_quadric_decimation(ratio)
                             simplification_success = True
                             needs_save = True
@@ -119,10 +108,6 @@ def generate_raw_xml(stl_path, scale_factor=1.0, override_stl_path=None):
     stl_filename = os.path.basename(target_path)
     scale_str = f"{scale_factor} {scale_factor} {scale_factor}"
 
-    # Check for parts directory IF NO OVERRIDE
-    # If we have an override (hull), we use that single file.
-    # If we have parts, we use parts.
-
     geoms_xml = ""
 
     stl_dir = os.path.dirname(stl_path)
@@ -137,16 +122,12 @@ def generate_raw_xml(stl_path, scale_factor=1.0, override_stl_path=None):
             print(f"ℹ️  Found parts directory: {parts_dir}. Adding individual parts to raw_mesh.xml.")
             for part_path in parts:
                 part_name = os.path.basename(part_path)
-                # We need to ensure parts are binary too, and simplify them!
-                # Note: ensure_binary_stl might return a hull path for a part.
                 is_valid, part_hull = ensure_binary_stl(part_path)
 
                 final_part_path = part_hull if part_hull else part_path
                 final_part_name = os.path.basename(final_part_path)
 
-                # Rel path
                 if part_hull:
-                    # Hull is usually next to part
                     rel_path = f"STL/{base_name}_parts/{final_part_name}"
                 else:
                     rel_path = f"STL/{base_name}_parts/{part_name}"
@@ -156,20 +137,16 @@ def generate_raw_xml(stl_path, scale_factor=1.0, override_stl_path=None):
                 geoms_xml += f'    <geom name="geom_{mesh_id}" type="mesh" mesh="{mesh_id}" rgba="0.8 0.8 0.8 1"/>\n'
 
     if not use_parts:
-        # Fallback to single mesh (or hull)
-        # Relative path from project root
-        # If target_path is "STL/file.stl" -> "STL/file.stl"
-        # If target_path is full path -> basename
-
-        # We assume stl_path was passed as relative "STL/file.stl" usually
-        # But ensure_binary_stl might return a full path or relative.
-        # Let's standardize.
-
-        # If override_stl_path is set (e.g. hull), it's likely "STL/file_hull.stl"
         rel_path = f"STL/{stl_filename}"
-
         geoms_xml = f'    <mesh name="target_mesh" file="{rel_path}" scale="{scale_str}"/>\n'
         geoms_xml += f'    <geom name="imported_part" type="mesh" mesh="target_mesh" rgba="0.8 0.8 0.8 1"/>\n'
+
+    # Filter lines outside f-string to avoid syntax errors
+    mesh_lines = [line for line in geoms_xml.splitlines() if '<mesh' in line]
+    geom_lines = [line for line in geoms_xml.splitlines() if '<geom' in line]
+
+    assets_block = "\n".join(mesh_lines)
+    world_block = "\n".join(geom_lines)
 
     xml_content = f"""<mujoco model="raw_mesh_view">
   <compiler angle="radian"/>
@@ -181,14 +158,14 @@ def generate_raw_xml(stl_path, scale_factor=1.0, override_stl_path=None):
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
 
-{'\n'.join([line for line in geoms_xml.splitlines() if '<mesh' in line])}
+{assets_block}
   </asset>
 
   <worldbody>
     <light pos="0 0 3" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
 
-{'\n'.join([line for line in geoms_xml.splitlines() if '<geom' in line])}
+{world_block}
   </worldbody>
 </mujoco>
 """
@@ -218,7 +195,7 @@ def generate_fitted_xml(stl_path, scale_factor=1.0):
         return
 
     try:
-        # Load Mesh (Merged)
+        ensure_binary_stl(stl_path)
         mesh = trimesh.load(stl_path)
 
         if scale_factor != 1.0:
