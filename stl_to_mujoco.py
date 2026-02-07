@@ -20,6 +20,7 @@ MUJOCO_FACE_LIMIT = 20000
 XML_DIR = "XML"
 RAW_XML_FILE = os.path.join(XML_DIR, "raw_mesh.xml")
 RAW_XML2_FILE = os.path.join(XML_DIR, "raw_mesh2.xml")
+COLLISION_BOX_FILE = os.path.join(XML_DIR, "collision_box.xml")
 FITTED_XML_FILE = os.path.join(XML_DIR, "fitted_pillars.xml")
 PATCHED_UR5E_FILE = os.path.join(XML_DIR, "ur5e_fitted.xml")
 
@@ -281,6 +282,8 @@ def generate_xmls(stl_files, scale_factor=1.0):
 
     # Generate XML Content
     geoms_xml = ""
+    collision_geoms_xml = "" # Accumulate collision geoms here
+
     abs_xml_dir = os.path.abspath(XML_DIR)
 
     # Track used names to prevent duplicates
@@ -316,11 +319,41 @@ def generate_xmls(stl_files, scale_factor=1.0):
         # Position Correction
         pos_str = f"0 0 {z_offset:.4f}"
 
+        # Visual Mesh
         geoms_xml += f'    <mesh name="{mesh_id}" file="{rel_path}" scale="{scale_str}"/>\n'
-        geoms_xml += f'    <geom name="geom_{mesh_id}" type="mesh" mesh="{mesh_id}" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0" pos="{pos_str}"/>\n'
+        geoms_xml += f'    <geom name="geom_{mesh_id}" type="mesh" mesh="{mesh_id}" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0" pos="{pos_str}" group="1" contype="0" conaffinity="0"/>\n'
+
+        # Collision Box (1 Box per Part)
+        try:
+            # Load mesh to get oriented bounding box
+            m = trimesh.load(stl_path)
+            if scale_factor != 1.0: m.apply_scale(scale_factor)
+
+            # Apply same rotation as visuals
+            T = np.eye(4); T[:3,:3] = rot_matrix
+            m.apply_transform(T)
+
+            # Get AABB in world coords (centered at origin + offset)
+            bounds = m.bounds
+            center = (bounds[0] + bounds[1]) / 2.0
+            dims = (bounds[1] - bounds[0]) / 2.0
+
+            # Apply global Z offset to center
+            center[2] += z_offset
+
+            # Box XML
+            # Use semi-transparent red for visibility (or group="3" for invisible collision)
+            # User requested Option A: Visual Mesh + Invisible Collision Boxes
+            # Often useful to have them visible but transparent for debugging, or strictly invisible.
+            # I will use group="3" which is standard for collision-only in MuJoCo, and maybe a faint rgba just in case group is rendered.
+            collision_geoms_xml += f'    <geom name="col_{mesh_id}" type="box" pos="{center[0]:.4f} {center[1]:.4f} {center[2]:.4f}" size="{dims[0]:.4f} {dims[1]:.4f} {dims[2]:.4f}" rgba="1 0 0 0.5" group="3"/>\n'
+
+        except Exception as e:
+            print(f"⚠️  Could not generate collision box for {mesh_id}: {e}")
 
     mesh_lines = [line for line in geoms_xml.splitlines() if '<mesh' in line]
     geom_lines = [line for line in geoms_xml.splitlines() if '<geom' in line]
+    collision_lines = [line for line in collision_geoms_xml.splitlines()]
 
     assets_block = "\n".join(mesh_lines)
     world_block = "\n".join(geom_lines)
@@ -380,6 +413,40 @@ def generate_xmls(stl_files, scale_factor=1.0):
     with open(RAW_XML2_FILE, "w") as f:
         f.write(xml_content_2)
     print(f"✅ Generated Raw XML 2 (with Robot): {os.path.abspath(RAW_XML2_FILE)}")
+
+    # 3. collision_box.xml (Visual Mesh + Collision Box + Robot)
+    collision_block = "\n".join(collision_lines)
+
+    xml_content_col = f"""<mujoco model="collision_box_view">
+  <compiler angle="radian"/>
+
+  <include file="{ur5e_ref}"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
+    <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
+
+{assets_block}
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
+
+    <!-- Visual Meshes (Group 1: Visible, No Collision) -->
+{world_block}
+
+    <!-- Collision Boxes (Group 3: Invisible Collision) -->
+{collision_block}
+  </worldbody>
+</mujoco>
+"""
+    with open(COLLISION_BOX_FILE, "w") as f:
+        f.write(xml_content_col)
+    print(f"✅ Generated Collision Box XML: {os.path.abspath(COLLISION_BOX_FILE)}")
 
 
 def main():
