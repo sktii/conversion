@@ -8,59 +8,291 @@
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
 
-    <mesh name="part_0" file="../STL/JX01-20250322.STEP_parts/part_0.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_1" file="../STL/JX01-20250322.STEP_parts/part_1.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_10" file="../STL/JX01-20250322.STEP_parts/part_10.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_11" file="../STL/JX01-20250322.STEP_parts/part_11.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_12" file="../STL/JX01-20250322.STEP_parts/part_12.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_13" file="../STL/JX01-20250322.STEP_parts/part_13.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_14" file="../STL/JX01-20250322.STEP_parts/part_14.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_15" file="../STL/JX01-20250322.STEP_parts/part_15.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_16" file="../STL/JX01-20250322.STEP_parts/part_16.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_17" file="../STL/JX01-20250322.STEP_parts/part_17.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_18_hull" file="../STL/JX01-20250322.STEP_parts/part_18_hull.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_18_hull" file="../STL/JX01-20250322.STEP_parts/part_18_hull.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_19" file="../STL/JX01-20250322.STEP_parts/part_19.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_2" file="../STL/JX01-20250322.STEP_parts/part_2.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_20" file="../STL/JX01-20250322.STEP_parts/part_20.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_21" file="../STL/JX01-20250322.STEP_parts/part_21.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_22" file="../STL/JX01-20250322.STEP_parts/part_22.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_3" file="../STL/JX01-20250322.STEP_parts/part_3.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_4" file="../STL/JX01-20250322.STEP_parts/part_4.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_5" file="../STL/JX01-20250322.STEP_parts/part_5.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_6" file="../STL/JX01-20250322.STEP_parts/part_6.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_7" file="../STL/JX01-20250322.STEP_parts/part_7.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_8" file="../STL/JX01-20250322.STEP_parts/part_8.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="part_9" file="../STL/JX01-20250322.STEP_parts/part_9.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="HDFBA20250322" file="../STL/JX01-20250322.STEP_parts/HDFBA20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z007A20250328" file="../STL/JX01-20250322.STEP_parts/GD100Z007A20250328.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="BanJinMen20250323" file="../STL/JX01-20250322.STEP_parts/BanJinMen20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z003A20250325" file="../STL/JX01-20250322.STEP_parts/GD100Z003A20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="BanJinMen20250324" file="../STL/JX01-20250322.STEP_parts/BanJinMen20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CITIEZHU20250324" file="../STL/JX01-20250322.STEP_parts/CITIEZHU20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z005A20250324" file="../STL/JX01-20250322.STEP_parts/GD100Z005A20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="ZhiChengBanA20250324" file="../STL/JX01-20250322.STEP_parts/ZhiChengBanA20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z001A20250324" file="../STL/JX01-20250322.STEP_parts/GD100Z001A20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z004A20250324" file="../STL/JX01-20250322.STEP_parts/GD100Z004A20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN3A20250322" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN3A20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MenShanBJA20250322_hull" file="../STL/JX01-20250322.STEP_parts/MenShanBJA20250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CiTieKuai20250324" file="../STL/JX01-20250322.STEP_parts/CiTieKuai20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN3A20250325" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN3A20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="DANGZHU20250327" file="../STL/JX01-20250322.STEP_parts/DANGZHU20250327.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CiTieKuai20250325" file="../STL/JX01-20250322.STEP_parts/CiTieKuai20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CITIEZHU20250325" file="../STL/JX01-20250322.STEP_parts/CITIEZHU20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z006A20250323" file="../STL/JX01-20250322.STEP_parts/GD100Z006A20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z007A20250329" file="../STL/JX01-20250322.STEP_parts/GD100Z007A20250329.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="JX0120250322_hull" file="../STL/JX01-20250322.STEP_parts/JX0120250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z006A20250322" file="../STL/JX01-20250322.STEP_parts/GD100Z006A20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN2A20250327" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN2A20250327.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN2A20250326" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN2A20250326.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="FJSM20130S20250325" file="../STL/JX01-20250322.STEP_parts/FJSM20130S20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z007A20250325" file="../STL/JX01-20250322.STEP_parts/GD100Z007A20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN2A20250323" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN2A20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="FJSM20130S20250323" file="../STL/JX01-20250322.STEP_parts/FJSM20130S20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN3A20250327" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN3A20250327.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100A20250325_hull" file="../STL/JX01-20250322.STEP_parts/GD100A20250325_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GuDingBanA20250325" file="../STL/JX01-20250322.STEP_parts/GuDingBanA20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100A20250324_hull" file="../STL/JX01-20250322.STEP_parts/GD100A20250324_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CiTieKuai20250323" file="../STL/JX01-20250322.STEP_parts/CiTieKuai20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN3A20250326" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN3A20250326.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z002A20250322_hull" file="../STL/JX01-20250322.STEP_parts/GD100Z002A20250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIUWUANSA20250323" file="../STL/JX01-20250322.STEP_parts/MISUMIUWUANSA20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN1A20250324" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN1A20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN2A20250325" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN2A20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN2A20250328" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN2A20250328.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z007A20250326" file="../STL/JX01-20250322.STEP_parts/GD100Z007A20250326.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z003A20250322" file="../STL/JX01-20250322.STEP_parts/GD100Z003A20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN2A20250324" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN2A20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN1A20250322" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN1A20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="WangBanA20250322_hull" file="../STL/JX01-20250322.STEP_parts/WangBanA20250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z002A20250325_hull" file="../STL/JX01-20250322.STEP_parts/GD100Z002A20250325_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MenShanBJA20250325_hull" file="../STL/JX01-20250322.STEP_parts/MenShanBJA20250325_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN3A20250329" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN3A20250329.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z001A20250325" file="../STL/JX01-20250322.STEP_parts/GD100Z001A20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GuDingBanA20250323" file="../STL/JX01-20250322.STEP_parts/GuDingBanA20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z007A20250322" file="../STL/JX01-20250322.STEP_parts/GD100Z007A20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="DingBanA20250322" file="../STL/JX01-20250322.STEP_parts/DingBanA20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="QDFBA20250322" file="../STL/JX01-20250322.STEP_parts/QDFBA20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="ZhiChengBanA20250323" file="../STL/JX01-20250322.STEP_parts/ZhiChengBanA20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="DANGZHU20250322" file="../STL/JX01-20250322.STEP_parts/DANGZHU20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z005A20250325" file="../STL/JX01-20250322.STEP_parts/GD100Z005A20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN3A20250323" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN3A20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="ZHCBA20250322" file="../STL/JX01-20250322.STEP_parts/ZHCBA20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIUWUANSA20250322" file="../STL/JX01-20250322.STEP_parts/MISUMIUWUANSA20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z002A20250323_hull" file="../STL/JX01-20250322.STEP_parts/GD100Z002A20250323_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="DANGZHU20250325" file="../STL/JX01-20250322.STEP_parts/DANGZHU20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="JiJiaA20250322_hull" file="../STL/JX01-20250322.STEP_parts/JiJiaA20250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIUWUANSA20250324" file="../STL/JX01-20250322.STEP_parts/MISUMIUWUANSA20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z002A20250322_hull" file="../STL/JX01-20250322.STEP_parts/GD100Z002A20250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="DANGZHU20250323" file="../STL/JX01-20250322.STEP_parts/DANGZHU20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z002A20250325_hull" file="../STL/JX01-20250322.STEP_parts/GD100Z002A20250325_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z002A20250324_hull" file="../STL/JX01-20250322.STEP_parts/GD100Z002A20250324_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN2A20250329" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN2A20250329.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN2A20250322" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN2A20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z003A20250324" file="../STL/JX01-20250322.STEP_parts/GD100Z003A20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MenShanBJA20250323_hull" file="../STL/JX01-20250322.STEP_parts/MenShanBJA20250323_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="ZhiChengBanA20250325" file="../STL/JX01-20250322.STEP_parts/ZhiChengBanA20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CITIEZHU20250326" file="../STL/JX01-20250322.STEP_parts/CITIEZHU20250326.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="ZCBA20250322_hull" file="../STL/JX01-20250322.STEP_parts/ZCBA20250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z004A20250323" file="../STL/JX01-20250322.STEP_parts/GD100Z004A20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CITIEZHU20250329" file="../STL/JX01-20250322.STEP_parts/CITIEZHU20250329.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GuDingBanA20250324" file="../STL/JX01-20250322.STEP_parts/GuDingBanA20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="DANGZHU20250324" file="../STL/JX01-20250322.STEP_parts/DANGZHU20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100A20250323_hull" file="../STL/JX01-20250322.STEP_parts/GD100A20250323_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CiTieKuai20250326" file="../STL/JX01-20250322.STEP_parts/CiTieKuai20250326.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z006A20250324" file="../STL/JX01-20250322.STEP_parts/GD100Z006A20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MenShanBJA20250323_hull" file="../STL/JX01-20250322.STEP_parts/MenShanBJA20250323_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CiTieKuai20250322" file="../STL/JX01-20250322.STEP_parts/CiTieKuai20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="FJSM20130LuoMu20250325" file="../STL/JX01-20250322.STEP_parts/FJSM20130LuoMu20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100A20250322_hull" file="../STL/JX01-20250322.STEP_parts/GD100A20250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z002A20250324_hull" file="../STL/JX01-20250322.STEP_parts/GD100Z002A20250324_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z005A20250323" file="../STL/JX01-20250322.STEP_parts/GD100Z005A20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="BanJinMen20250325" file="../STL/JX01-20250322.STEP_parts/BanJinMen20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN1A20250325" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN1A20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MenShanBJA20250324_hull" file="../STL/JX01-20250322.STEP_parts/MenShanBJA20250324_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100A20250324_hull" file="../STL/JX01-20250322.STEP_parts/GD100A20250324_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIUWUANSA20250325" file="../STL/JX01-20250322.STEP_parts/MISUMIUWUANSA20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z005A20250322" file="../STL/JX01-20250322.STEP_parts/GD100Z005A20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="DANGZHU20250329" file="../STL/JX01-20250322.STEP_parts/DANGZHU20250329.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z006A20250325" file="../STL/JX01-20250322.STEP_parts/GD100Z006A20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN3A20250324" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN3A20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CITIEZHU20250327" file="../STL/JX01-20250322.STEP_parts/CITIEZHU20250327.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="ZhiChengBanA20250322" file="../STL/JX01-20250322.STEP_parts/ZhiChengBanA20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="ZCBA20250322_hull" file="../STL/JX01-20250322.STEP_parts/ZCBA20250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN3A20250328" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN3A20250328.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN1A20250328" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN1A20250328.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z003A20250323" file="../STL/JX01-20250322.STEP_parts/GD100Z003A20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="FJSM20130LuoMu20250324" file="../STL/JX01-20250322.STEP_parts/FJSM20130LuoMu20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN1A20250329" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN1A20250329.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CITIEZHU20250328" file="../STL/JX01-20250322.STEP_parts/CITIEZHU20250328.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z007A20250323" file="../STL/JX01-20250322.STEP_parts/GD100Z007A20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CITIEZHU20250323" file="../STL/JX01-20250322.STEP_parts/CITIEZHU20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="YHCBA20250322" file="../STL/JX01-20250322.STEP_parts/YHCBA20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="JX0120250322_hull" file="../STL/JX01-20250322.STEP_parts/JX0120250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MenShanBJA20250322_hull" file="../STL/JX01-20250322.STEP_parts/MenShanBJA20250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z001A20250323" file="../STL/JX01-20250322.STEP_parts/GD100Z001A20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN1A20250326" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN1A20250326.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MenShanBJA20250324_hull" file="../STL/JX01-20250322.STEP_parts/MenShanBJA20250324_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="plane" file="../STL/JX01-20250322.STEP_parts/plane.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="JiJiaA20250322_hull" file="../STL/JX01-20250322.STEP_parts/JiJiaA20250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z001A20250322" file="../STL/JX01-20250322.STEP_parts/GD100Z001A20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN1A20250327" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN1A20250327.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="DANGZHU20250326" file="../STL/JX01-20250322.STEP_parts/DANGZHU20250326.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z007A20250327" file="../STL/JX01-20250322.STEP_parts/GD100Z007A20250327.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CiTieKuai20250327" file="../STL/JX01-20250322.STEP_parts/CiTieKuai20250327.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="DANGZHU20250328" file="../STL/JX01-20250322.STEP_parts/DANGZHU20250328.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z004A20250325" file="../STL/JX01-20250322.STEP_parts/GD100Z004A20250325.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z002A20250323_hull" file="../STL/JX01-20250322.STEP_parts/GD100Z002A20250323_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CITIEZHU20250322" file="../STL/JX01-20250322.STEP_parts/CITIEZHU20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="YCBA20250322" file="../STL/JX01-20250322.STEP_parts/YCBA20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="FJSM20130LuoMu20250322" file="../STL/JX01-20250322.STEP_parts/FJSM20130LuoMu20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="FJSM20130S20250324" file="../STL/JX01-20250322.STEP_parts/FJSM20130S20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CiTieKuai20250328" file="../STL/JX01-20250322.STEP_parts/CiTieKuai20250328.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z007A20250324" file="../STL/JX01-20250322.STEP_parts/GD100Z007A20250324.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100A20250323_hull" file="../STL/JX01-20250322.STEP_parts/GD100A20250323_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="CiTieKuai20250329" file="../STL/JX01-20250322.STEP_parts/CiTieKuai20250329.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100Z004A20250322" file="../STL/JX01-20250322.STEP_parts/GD100Z004A20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="LianJieBanA20250322" file="../STL/JX01-20250322.STEP_parts/LianJieBanA20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="BanJinMen20250322" file="../STL/JX01-20250322.STEP_parts/BanJinMen20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="FJSM20130LuoMu20250323" file="../STL/JX01-20250322.STEP_parts/FJSM20130LuoMu20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GuDingBanA20250322" file="../STL/JX01-20250322.STEP_parts/GuDingBanA20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MenShanBJA20250325_hull" file="../STL/JX01-20250322.STEP_parts/MenShanBJA20250325_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100A20250325_hull" file="../STL/JX01-20250322.STEP_parts/GD100A20250325_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="WangBanA20250322_hull" file="../STL/JX01-20250322.STEP_parts/WangBanA20250322_hull.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="FJSM20130S20250322" file="../STL/JX01-20250322.STEP_parts/FJSM20130S20250322.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="MISUMIHHPSN1A20250323" file="../STL/JX01-20250322.STEP_parts/MISUMIHHPSN1A20250323.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="GD100A20250322_hull" file="../STL/JX01-20250322.STEP_parts/GD100A20250322_hull.stl" scale="0.001 0.001 0.001"/>
   </asset>
 
   <worldbody>
     <light pos="0 0 3" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="2 2 .05" type="plane" material="grid"/>
 
-    <geom name="geom_part_0" type="mesh" mesh="part_0" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_1" type="mesh" mesh="part_1" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_10" type="mesh" mesh="part_10" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_11" type="mesh" mesh="part_11" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_12" type="mesh" mesh="part_12" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_13" type="mesh" mesh="part_13" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_14" type="mesh" mesh="part_14" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_15" type="mesh" mesh="part_15" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_16" type="mesh" mesh="part_16" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_17" type="mesh" mesh="part_17" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_18_hull" type="mesh" mesh="part_18_hull" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_18_hull" type="mesh" mesh="part_18_hull" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_19" type="mesh" mesh="part_19" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_2" type="mesh" mesh="part_2" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_20" type="mesh" mesh="part_20" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_21" type="mesh" mesh="part_21" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_22" type="mesh" mesh="part_22" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_3" type="mesh" mesh="part_3" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_4" type="mesh" mesh="part_4" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_5" type="mesh" mesh="part_5" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_6" type="mesh" mesh="part_6" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_7" type="mesh" mesh="part_7" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_8" type="mesh" mesh="part_8" rgba="0.8 0.8 0.8 1"/>
-    <geom name="geom_part_9" type="mesh" mesh="part_9" rgba="0.8 0.8 0.8 1"/>
+    <geom name="geom_HDFBA20250322" type="mesh" mesh="HDFBA20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z007A20250328" type="mesh" mesh="GD100Z007A20250328" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_BanJinMen20250323" type="mesh" mesh="BanJinMen20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z003A20250325" type="mesh" mesh="GD100Z003A20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_BanJinMen20250324" type="mesh" mesh="BanJinMen20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CITIEZHU20250324" type="mesh" mesh="CITIEZHU20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z005A20250324" type="mesh" mesh="GD100Z005A20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_ZhiChengBanA20250324" type="mesh" mesh="ZhiChengBanA20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z001A20250324" type="mesh" mesh="GD100Z001A20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z004A20250324" type="mesh" mesh="GD100Z004A20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN3A20250322" type="mesh" mesh="MISUMIHHPSN3A20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MenShanBJA20250322_hull" type="mesh" mesh="MenShanBJA20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CiTieKuai20250324" type="mesh" mesh="CiTieKuai20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN3A20250325" type="mesh" mesh="MISUMIHHPSN3A20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_DANGZHU20250327" type="mesh" mesh="DANGZHU20250327" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CiTieKuai20250325" type="mesh" mesh="CiTieKuai20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CITIEZHU20250325" type="mesh" mesh="CITIEZHU20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z006A20250323" type="mesh" mesh="GD100Z006A20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z007A20250329" type="mesh" mesh="GD100Z007A20250329" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_JX0120250322_hull" type="mesh" mesh="JX0120250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z006A20250322" type="mesh" mesh="GD100Z006A20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN2A20250327" type="mesh" mesh="MISUMIHHPSN2A20250327" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN2A20250326" type="mesh" mesh="MISUMIHHPSN2A20250326" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_FJSM20130S20250325" type="mesh" mesh="FJSM20130S20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z007A20250325" type="mesh" mesh="GD100Z007A20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN2A20250323" type="mesh" mesh="MISUMIHHPSN2A20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_FJSM20130S20250323" type="mesh" mesh="FJSM20130S20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN3A20250327" type="mesh" mesh="MISUMIHHPSN3A20250327" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100A20250325_hull" type="mesh" mesh="GD100A20250325_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GuDingBanA20250325" type="mesh" mesh="GuDingBanA20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100A20250324_hull" type="mesh" mesh="GD100A20250324_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CiTieKuai20250323" type="mesh" mesh="CiTieKuai20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN3A20250326" type="mesh" mesh="MISUMIHHPSN3A20250326" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z002A20250322_hull" type="mesh" mesh="GD100Z002A20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIUWUANSA20250323" type="mesh" mesh="MISUMIUWUANSA20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN1A20250324" type="mesh" mesh="MISUMIHHPSN1A20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN2A20250325" type="mesh" mesh="MISUMIHHPSN2A20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN2A20250328" type="mesh" mesh="MISUMIHHPSN2A20250328" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z007A20250326" type="mesh" mesh="GD100Z007A20250326" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z003A20250322" type="mesh" mesh="GD100Z003A20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN2A20250324" type="mesh" mesh="MISUMIHHPSN2A20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN1A20250322" type="mesh" mesh="MISUMIHHPSN1A20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_WangBanA20250322_hull" type="mesh" mesh="WangBanA20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z002A20250325_hull" type="mesh" mesh="GD100Z002A20250325_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MenShanBJA20250325_hull" type="mesh" mesh="MenShanBJA20250325_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN3A20250329" type="mesh" mesh="MISUMIHHPSN3A20250329" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z001A20250325" type="mesh" mesh="GD100Z001A20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GuDingBanA20250323" type="mesh" mesh="GuDingBanA20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z007A20250322" type="mesh" mesh="GD100Z007A20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_DingBanA20250322" type="mesh" mesh="DingBanA20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_QDFBA20250322" type="mesh" mesh="QDFBA20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_ZhiChengBanA20250323" type="mesh" mesh="ZhiChengBanA20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_DANGZHU20250322" type="mesh" mesh="DANGZHU20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z005A20250325" type="mesh" mesh="GD100Z005A20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN3A20250323" type="mesh" mesh="MISUMIHHPSN3A20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_ZHCBA20250322" type="mesh" mesh="ZHCBA20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIUWUANSA20250322" type="mesh" mesh="MISUMIUWUANSA20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z002A20250323_hull" type="mesh" mesh="GD100Z002A20250323_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_DANGZHU20250325" type="mesh" mesh="DANGZHU20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_JiJiaA20250322_hull" type="mesh" mesh="JiJiaA20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIUWUANSA20250324" type="mesh" mesh="MISUMIUWUANSA20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z002A20250322_hull" type="mesh" mesh="GD100Z002A20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_DANGZHU20250323" type="mesh" mesh="DANGZHU20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z002A20250325_hull" type="mesh" mesh="GD100Z002A20250325_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z002A20250324_hull" type="mesh" mesh="GD100Z002A20250324_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN2A20250329" type="mesh" mesh="MISUMIHHPSN2A20250329" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN2A20250322" type="mesh" mesh="MISUMIHHPSN2A20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z003A20250324" type="mesh" mesh="GD100Z003A20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MenShanBJA20250323_hull" type="mesh" mesh="MenShanBJA20250323_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_ZhiChengBanA20250325" type="mesh" mesh="ZhiChengBanA20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CITIEZHU20250326" type="mesh" mesh="CITIEZHU20250326" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_ZCBA20250322_hull" type="mesh" mesh="ZCBA20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z004A20250323" type="mesh" mesh="GD100Z004A20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CITIEZHU20250329" type="mesh" mesh="CITIEZHU20250329" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GuDingBanA20250324" type="mesh" mesh="GuDingBanA20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_DANGZHU20250324" type="mesh" mesh="DANGZHU20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100A20250323_hull" type="mesh" mesh="GD100A20250323_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CiTieKuai20250326" type="mesh" mesh="CiTieKuai20250326" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z006A20250324" type="mesh" mesh="GD100Z006A20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MenShanBJA20250323_hull" type="mesh" mesh="MenShanBJA20250323_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CiTieKuai20250322" type="mesh" mesh="CiTieKuai20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_FJSM20130LuoMu20250325" type="mesh" mesh="FJSM20130LuoMu20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100A20250322_hull" type="mesh" mesh="GD100A20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z002A20250324_hull" type="mesh" mesh="GD100Z002A20250324_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z005A20250323" type="mesh" mesh="GD100Z005A20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_BanJinMen20250325" type="mesh" mesh="BanJinMen20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN1A20250325" type="mesh" mesh="MISUMIHHPSN1A20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MenShanBJA20250324_hull" type="mesh" mesh="MenShanBJA20250324_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100A20250324_hull" type="mesh" mesh="GD100A20250324_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIUWUANSA20250325" type="mesh" mesh="MISUMIUWUANSA20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z005A20250322" type="mesh" mesh="GD100Z005A20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_DANGZHU20250329" type="mesh" mesh="DANGZHU20250329" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z006A20250325" type="mesh" mesh="GD100Z006A20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN3A20250324" type="mesh" mesh="MISUMIHHPSN3A20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CITIEZHU20250327" type="mesh" mesh="CITIEZHU20250327" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_ZhiChengBanA20250322" type="mesh" mesh="ZhiChengBanA20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_ZCBA20250322_hull" type="mesh" mesh="ZCBA20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN3A20250328" type="mesh" mesh="MISUMIHHPSN3A20250328" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN1A20250328" type="mesh" mesh="MISUMIHHPSN1A20250328" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z003A20250323" type="mesh" mesh="GD100Z003A20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_FJSM20130LuoMu20250324" type="mesh" mesh="FJSM20130LuoMu20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN1A20250329" type="mesh" mesh="MISUMIHHPSN1A20250329" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CITIEZHU20250328" type="mesh" mesh="CITIEZHU20250328" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z007A20250323" type="mesh" mesh="GD100Z007A20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CITIEZHU20250323" type="mesh" mesh="CITIEZHU20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_YHCBA20250322" type="mesh" mesh="YHCBA20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_JX0120250322_hull" type="mesh" mesh="JX0120250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MenShanBJA20250322_hull" type="mesh" mesh="MenShanBJA20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z001A20250323" type="mesh" mesh="GD100Z001A20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN1A20250326" type="mesh" mesh="MISUMIHHPSN1A20250326" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MenShanBJA20250324_hull" type="mesh" mesh="MenShanBJA20250324_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_plane" type="mesh" mesh="plane" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_JiJiaA20250322_hull" type="mesh" mesh="JiJiaA20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z001A20250322" type="mesh" mesh="GD100Z001A20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN1A20250327" type="mesh" mesh="MISUMIHHPSN1A20250327" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_DANGZHU20250326" type="mesh" mesh="DANGZHU20250326" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z007A20250327" type="mesh" mesh="GD100Z007A20250327" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CiTieKuai20250327" type="mesh" mesh="CiTieKuai20250327" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_DANGZHU20250328" type="mesh" mesh="DANGZHU20250328" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z004A20250325" type="mesh" mesh="GD100Z004A20250325" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z002A20250323_hull" type="mesh" mesh="GD100Z002A20250323_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CITIEZHU20250322" type="mesh" mesh="CITIEZHU20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_YCBA20250322" type="mesh" mesh="YCBA20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_FJSM20130LuoMu20250322" type="mesh" mesh="FJSM20130LuoMu20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_FJSM20130S20250324" type="mesh" mesh="FJSM20130S20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CiTieKuai20250328" type="mesh" mesh="CiTieKuai20250328" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z007A20250324" type="mesh" mesh="GD100Z007A20250324" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100A20250323_hull" type="mesh" mesh="GD100A20250323_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_CiTieKuai20250329" type="mesh" mesh="CiTieKuai20250329" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100Z004A20250322" type="mesh" mesh="GD100Z004A20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_LianJieBanA20250322" type="mesh" mesh="LianJieBanA20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_BanJinMen20250322" type="mesh" mesh="BanJinMen20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_FJSM20130LuoMu20250323" type="mesh" mesh="FJSM20130LuoMu20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GuDingBanA20250322" type="mesh" mesh="GuDingBanA20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MenShanBJA20250325_hull" type="mesh" mesh="MenShanBJA20250325_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100A20250325_hull" type="mesh" mesh="GD100A20250325_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_WangBanA20250322_hull" type="mesh" mesh="WangBanA20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_FJSM20130S20250322" type="mesh" mesh="FJSM20130S20250322" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_MISUMIHHPSN1A20250323" type="mesh" mesh="MISUMIHHPSN1A20250323" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
+    <geom name="geom_GD100A20250322_hull" type="mesh" mesh="GD100A20250322_hull" rgba="0.8 0.8 0.8 1" euler="1.5707963 0 0"/>
   </worldbody>
 </mujoco>
