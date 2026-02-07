@@ -203,18 +203,52 @@ def generate_xmls(stl_files, scale_factor=1.0):
     else:
         print("   -> Could not calculate bounds. Defaulting to 0 offset.")
 
-    # Calculate Robot Position
+    # Calculate Robot Position (Top Surface Centroid)
     robot_pos = np.array([0.0, 0.0, 0.0])
-    if plane_bounds:
-        # Calculate center of top surface
-        center_x = (plane_bounds[0] + plane_bounds[3]) / 2.0
-        center_y = (plane_bounds[1] + plane_bounds[4]) / 2.0
-        top_z = plane_bounds[5] # Top of the disk/plane
 
-        # Apply offset
-        final_z = top_z + z_offset
-        robot_pos = np.array([center_x, center_y, final_z])
-        print(f"🤖 Calculated Robot Position on Disk: {robot_pos}")
+    # Re-process plane.stl to find the true top center (disk center)
+    plane_stl_path = None
+    for p in stl_files:
+        if "plane.stl" in os.path.basename(p).lower():
+            plane_stl_path = p
+            break
+
+    if plane_stl_path:
+        try:
+            # Load and transform plane mesh again
+            pm = trimesh.load(plane_stl_path)
+            if scale_factor != 1.0: pm.apply_scale(scale_factor)
+            T = np.eye(4); T[:3,:3] = rot_matrix
+            pm.apply_transform(T)
+
+            # Sample points on surface to find high spots
+            points, _ = trimesh.sample.sample_surface(pm, 10000)
+            z_coords = points[:, 2]
+            max_z = np.max(z_coords)
+
+            # Filter for points within 2mm (0.002m) of the top
+            # This isolates the "disk" if it is raised
+            top_mask = z_coords > (max_z - 0.002)
+            top_points = points[top_mask]
+
+            if len(top_points) > 0:
+                center_x = np.mean(top_points[:, 0])
+                center_y = np.mean(top_points[:, 1])
+                # The robot should sit ON TOP of this surface
+                final_z = max_z + z_offset
+
+                robot_pos = np.array([center_x, center_y, final_z])
+                print(f"🤖 Calculated Robot Position on Disk (Surface Sampling): {robot_pos}")
+            else:
+                 # Fallback to bounding box center if sampling fails
+                 print("⚠️  Warning: Could not sample top surface. Falling back to bounding box.")
+                 center_x = (pm.bounds[0][0] + pm.bounds[1][0]) / 2.0
+                 center_y = (pm.bounds[0][1] + pm.bounds[1][1]) / 2.0
+                 final_z = pm.bounds[1][2] + z_offset
+                 robot_pos = np.array([center_x, center_y, final_z])
+
+        except Exception as e:
+            print(f"⚠️  Error calculating disk center: {e}")
     else:
         print("⚠️  Warning: 'plane.stl' not found. Robot position defaults to origin.")
 
