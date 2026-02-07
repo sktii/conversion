@@ -162,6 +162,9 @@ def generate_raw_xml(stl_files, scale_factor=1.0):
 
     abs_xml_dir = os.path.abspath(XML_DIR)
 
+    # Track used names to prevent duplicates
+    used_mesh_names = set()
+
     for stl_path in stl_files:
         is_valid, hull_path = ensure_binary_stl(stl_path)
         final_part_path = hull_path if hull_path else stl_path
@@ -176,7 +179,15 @@ def generate_raw_xml(stl_files, scale_factor=1.0):
              rel_path = final_part_path.replace("\\", "/")
 
         final_part_name = os.path.basename(final_part_path)
-        mesh_id = os.path.splitext(final_part_name)[0].replace(" ", "_").replace(".", "_")
+        base_mesh_id = os.path.splitext(final_part_name)[0].replace(" ", "_").replace(".", "_")
+
+        # Uniquify Name
+        mesh_id = base_mesh_id
+        counter = 1
+        while mesh_id in used_mesh_names:
+            mesh_id = f"{base_mesh_id}_{counter}"
+            counter += 1
+        used_mesh_names.add(mesh_id)
 
         # Apply Default Rotation: 90 degrees around X-axis (1.5707963 rad)
         # Ensure path does not start with ../
