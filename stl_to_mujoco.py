@@ -362,10 +362,10 @@ def generate_xmls(stl_files, scale_factor=1.0):
         if i < len(collected_boxes):
             # Real box
             b = collected_boxes[i]
-            final_collision_xml += f'    <geom name="{box_name}" type="box" pos="{b["pos"][0]:.4f} {b["pos"][1]:.4f} {b["pos"][2]:.4f}" size="{b["size"][0]:.4f} {b["size"][1]:.4f} {b["size"][2]:.4f}" rgba="1 0 0 0.5" group="3"/>\n'
+            final_collision_xml += f'    <geom name="{box_name}" type="box" pos="{b["pos"][0]:.4f} {b["pos"][1]:.4f} {b["pos"][2]:.4f}" size="{b["size"][0]:.4f} {b["size"][1]:.4f} {b["size"][2]:.4f}" rgba="1 0 0 0.5" group="3" contype="1" conaffinity="1"/>\n'
         else:
             # Dummy box
-            final_collision_xml += f'    <geom name="{box_name}" type="box" pos="10 0 0" size="0.01 0.01 0.01" rgba="0.5 0.5 0.5 0" group="3"/>\n'
+            final_collision_xml += f'    <geom name="{box_name}" type="box" pos="10 0 0" size="0.01 0.01 0.01" rgba="0.5 0.5 0.5 0" group="3" contype="1" conaffinity="1"/>\n'
 
     mesh_lines = [line for line in geoms_xml.splitlines() if '<mesh' in line]
     geom_lines = [line for line in geoms_xml.splitlines() if '<geom' in line]
