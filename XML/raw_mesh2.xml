@@ -1,5 +1,7 @@
-<mujoco model="raw_mesh_view">
+<mujoco model="raw_mesh_view_with_robot">
   <compiler angle="radian"/>
+
+  <include file="ur5e_fitted.xml"/>
 
   <option timestep="0.002" gravity="0 0 -9.81"/>
 
